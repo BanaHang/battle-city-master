@@ -2,6 +2,7 @@ import tanks
 import pygame
 import random
 import os
+from Queue import deque
 
 
 def tanks_init():
@@ -16,7 +17,7 @@ def tanks_init():
     tanks.labels = []
 
     tanks.play_sounds = True
-    tanks.sounds = {}
+    tanks.sounds = dict()
     pygame.mixer.init(44100, -16, 1, 512)
     tanks.sounds["start"] = pygame.mixer.Sound("sounds/gamestart.ogg")
     tanks.sounds["end"] = pygame.mixer.Sound("sounds/gameover.ogg")
@@ -30,10 +31,13 @@ def tanks_init():
 
 
 class Robot(tanks.Player):
-    def __init__(self, sprites, level, side, position=None, direction=None, filename=None):
-        tanks.Player.__init__(self, level, side, position=None, direction=None, filename=None)
+    def __init__(self, sprites, enemies, players, bonuses, level, side, position=None, direction=None, filename=None):
+        tanks.Player.__init__(self, level, side, position=position, direction=direction, filename=filename)
 
         self.sprites = sprites
+        self.enemies = enemies
+        self.players = players
+        self.bonuses = bonuses
         self.filename = filename
         if filename is None:
             filename = (0, 0, 16 * 2, 16 * 2)
@@ -66,12 +70,314 @@ class Robot(tanks.Player):
         else:
             self.rotate(direction, False)
 
+        self.path = []
+
+    def generatePath(self, direction=None, fix_direction=False):
+
+        all_directions = [self.DIR_UP, self.DIR_RIGHT, self.DIR_DOWN, self.DIR_LEFT]
+        directions = all_directions
+        opposite_direction = None
+
+        if direction is None:
+            if self.direction in [self.DIR_UP, self.DIR_RIGHT]:
+                opposite_direction = self.direction + 2
+            else:
+                opposite_direction = self.direction - 2
+            random.shuffle(directions)
+            directions.remove(opposite_direction)
+            directions.append(opposite_direction)
+        else:
+            if direction in [self.DIR_UP, self.DIR_RIGHT]:
+                opposite_direction = direction + 2
+            else:
+                opposite_direction = direction - 2
+            directions = all_directions
+            random.shuffle(directions)
+            directions.remove(opposite_direction)
+            directions.remove(direction)
+            directions.insert(0, direction)
+            directions.append(opposite_direction)
+
+        # at first, work with general units (steps) not px
+        x = int(round(self.rect.left / 16))
+        y = int(round(self.rect.top / 16))
+
+        new_direction = None
+
+        for direction in directions:
+            if direction == self.DIR_UP and y > 1:
+                new_pos_rect = self.rect.move(0, -8)
+                if new_pos_rect.collidelist(self.level.obstacle_rects) == -1:
+                    new_direction = direction
+                    break
+            elif direction == self.DIR_RIGHT and x < 24:
+                new_pos_rect = self.rect.move(8, 0)
+                if new_pos_rect.collidelist(self.level.obstacle_rects) == -1:
+                    new_direction = direction
+                    break
+            elif direction == self.DIR_DOWN and y < 24:
+                new_pos_rect = self.rect.move(0, 8)
+                if new_pos_rect.collidelist(self.level.obstacle_rects) == -1:
+                    new_direction = direction
+                    break
+            elif direction == self.DIR_LEFT and x > 1:
+                new_pos_rect = self.rect.move(-8, 0)
+                if new_pos_rect.collidelist(self.level.obstacle_rects) == -1:
+                    new_direction = direction
+                    break
+
+        # if we can go anywhere else, turn around
+        if new_direction is None:
+            new_direction = opposite_direction
+            print "turn around"
+
+        # fix tanks position
+        if fix_direction and new_direction == self.direction:
+            fix_direction = False
+        self.rotate(new_direction, fix_direction)
+
+        positions = []
+
+        x = self.rect.left
+        y = self.rect.top
+
+        axis_fix = 0
+        if new_direction in (self.DIR_RIGHT, self.DIR_LEFT):
+            axis_fix = self.nearest(y, 16) - y
+        else:
+            axis_fix = self.nearest(x, 16) - x
+
+        pixels = self.nearest(random.randint(1, 12) * 32, 32) + axis_fix + 3
+
+        if new_direction == self.DIR_UP:
+            for px in range(0, pixels, self.speed):
+                positions.append([x, y - px])
+        elif new_direction == self.DIR_RIGHT:
+            for px in range(0, pixels, self.speed):
+                positions.append([x + px, y])
+        elif new_direction == self.DIR_DOWN:
+            for px in range(0, pixels, self.speed):
+                positions.append([x, y + px])
+        elif new_direction == self.DIR_LEFT:
+            for px in range(0, pixels, self.speed):
+                positions.append([x - px, y])
+
+        return positions
+
+    def find_path_to_enemy(self):
+        '''
+        find path to enemy by bfs
+        :param enemy: Tank.Enemy
+        :return: path(list)
+        '''
+        x = self.rect.left
+        y = self.rect.top
+
+        # 416/16=26
+        visit = [[0 for i in range(26)] for j in range(26)]
+        pre = [[(-1, -1) for i in range(26)] for j in range(26)]
+
+        fix_x = int(round(x / 16))
+        fix_y = int(round(y / 16))
+
+        visit[fix_x][fix_y] = 1
+        pre[fix_x][fix_y] = (fix_x, fix_y)
+        queue = deque()
+        queue.append((fix_x, fix_y))
+
+        move = ((0, -1), (1, 0), (0, 1), (-1, 0))
+
+        meet_enemy = False
+
+        # bfs
+        while len(queue) and not meet_enemy:
+            temp = queue.popleft()
+            for m in move:
+                fix_x = temp[0]+m[0]
+                fix_y = temp[1]+m[1]
+                new_rect = pygame.Rect((fix_x*16, fix_y*16), [26, 26])
+
+                # if visited
+                if visit[fix_x][fix_y]:
+                    continue
+
+                # detect border
+                if fix_x*16 < 0 or fix_x*16 > (416 - 26) or fix_y*16 < 0 or fix_y*16 > (416 - 26):
+                    continue
+
+                # collisions with tiles
+                if new_rect.collidelist(self.level.obstacle_rects) != -1:
+                    continue
+
+                # collisions with players
+                for player in self.players:
+                    if player != self and player.state == player.STATE_ALIVE and new_rect.colliderect(player.rect) != -1:
+                        continue
+
+                # collisions with enemies
+                if new_rect.collidelist(self.enemies) != -1:
+                    meet_enemy = True
+
+                visit[fix_x][fix_y] = 1
+                pre[fix_x][fix_y] = temp
+                queue.append((fix_x, fix_y))
+
+        path_matrix = list()
+        m, n = fix_x, fix_y
+        while pre[m][n] != (m, n):
+            path_matrix.append((m, n))
+            m, n = pre[m][n]
+        path_matrix.reverse()
+
+        path = list()
+        for p in path_matrix:
+            x_temp, y_temp = p[0]*16, p[1]*16
+            if x_temp > x:
+                for px in range(0, x_temp-x, self.speed):
+                    path.append((x+px, y, self.DIR_RIGHT))
+            if x_temp < x:
+                for px in range(0, x-x_temp, self.speed):
+                    path.append((x-px, y, self.DIR_LEFT))
+            if y_temp > y:
+                for px in range(0, y_temp-y, self.speed):
+                    path.append((x, y+px, self.DIR_DOWN))
+            if y_temp < y:
+                for px in range(0, y-y_temp, self.speed):
+                    path.append((x, y-px, self.DIR_UP))
+            x, y = x_temp, y_temp
+        return path
+
     def auto(self):
-        dir = random.randrange(4)
-        self.move(dir)
+
+        if self.state == self.STATE_EXPLODING:
+            if not self.explosion.active:
+                self.state = self.STATE_DEAD
+                del self.explosion
+
+        if self.state != self.STATE_ALIVE or self.paralised:
+            return
+
+        if not self.path:
+            self.path = self.generatePath(None, True)
+
+        new_position = self.path.pop(0)
+
+        # move
+        if self.direction == self.DIR_UP:
+            if new_position[1] < 0:
+                self.path = self.generatePath(self.direction, True)
+                return
+        elif self.direction == self.DIR_RIGHT:
+            if new_position[0] > (416 - 26):
+                self.path = self.generatePath(self.direction, True)
+                return
+        elif self.direction == self.DIR_DOWN:
+            if new_position[1] > (416 - 26):
+                self.path = self.generatePath(self.direction, True)
+                return
+        elif self.direction == self.DIR_LEFT:
+            if new_position[0] < 0:
+                self.path = self.generatePath(self.direction, True)
+                return
+
+        new_rect = pygame.Rect(new_position, [26, 26])
+
+        # collisions with tiles
+        if new_rect.collidelist(self.level.obstacle_rects) != -1:
+            self.path = self.generatePath(self.direction, True)
+            return
+
+        # collisions with enemies
+        for enemy in self.enemies:
+            if new_rect.colliderect(enemy.rect):
+                self.fire()
+                self.turnAround()
+                self.path = self.generatePath(self.direction)
+                return
+
+        # collisions with players
+        for player in self.players:
+            if player != self and player.state == player.STATE_ALIVE and new_rect.colliderect(player.rect):
+                self.turnAround()
+                self.path = self.generatePath(self.direction)
+                return
+
+        # collisions with bonuses
+        for bonus in self.bonuses:
+            if new_rect.colliderect(bonus.rect):
+                self.bonus = bonus
+
+        # if no collision, move robot
+        self.rect.topleft = new_rect.topleft
+
+    def auto2(self):
+        if self.state == self.STATE_EXPLODING:
+            if not self.explosion.active:
+                self.state = self.STATE_DEAD
+                del self.explosion
+
+        if self.state != self.STATE_ALIVE or self.paralised:
+            return
+
+        if len(self.path) == 0:
+            self.path = self.find_path_to_enemy()
+
+        new_position = self.path.pop(0)
+        print(new_position)
+
+        if new_position[2] == self.DIR_UP:
+            if new_position[1] < 0:
+                self.path = self.find_path_to_enemy()
+                return
+        elif new_position[2] == self.DIR_RIGHT:
+            if new_position[0] > (416 - 26):
+                self.path = self.find_path_to_enemy()
+                return
+        elif new_position[2] == self.DIR_DOWN:
+            if new_position[1] > (416 - 26):
+                self.path = self.find_path_to_enemy()
+                return
+        elif new_position[2] == self.DIR_LEFT:
+            if new_position[0] < 0:
+                self.path = self.find_path_to_enemy()
+                return
+
+        new_rect = pygame.Rect((new_position[0], new_position[1]), [26, 26])
+        self.rotate(new_position[2])
+
+        # collisions with tiles
+        if new_rect.collidelist(self.level.obstacle_rects) != -1:
+            self.path = self.find_path_to_enemy()
+            return
+
+        # collisions with enemies
+        for enemy in self.enemies:
+            if new_rect.colliderect(enemy.rect):
+                self.fire()
+                self.path = self.find_path_to_enemy()
+                return
+
+        # collisions with players
+        for player in self.players:
+            if player != self and player.state == player.STATE_ALIVE and new_rect.colliderect(player.rect):
+                self.path = self.find_path_to_enemy()
+                return
+
+        # collisions with bonuses
+        for bonus in self.bonuses:
+            if new_rect.colliderect(bonus.rect):
+                self.bonus = bonus
+
+        # if no collision, move robot
+        self.rect.topleft = new_rect.topleft
+
+    def ai_update(self, time_passed):
+        tanks.Tank.update(self, time_passed)
+        if self.state == self.STATE_ALIVE and not self.paralised and len(self.enemies):
+            self.auto2()
 
 
-class Gameloader():
+class Gameloader:
 
     (DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT) = range(4)
     TILE_SIZE = 16
@@ -544,7 +850,7 @@ class Gameloader():
             y = 24 * self.TILE_SIZE + (self.TILE_SIZE * 2 - 26) / 2
 
             robot1 = Robot(
-                self.sprites, self.level, 0, [x, y], self.DIR_UP, (0, 0, 13 * 2, 13 * 2)
+                self.sprites, self.enemies, self.players, self.bonuses, self.level, 0, [x, y], self.DIR_UP, (0, 0, 13 * 2, 13 * 2)
             )
             self.players.append(robot1)
 
@@ -553,7 +859,7 @@ class Gameloader():
                 x = 16 * self.TILE_SIZE + (self.TILE_SIZE * 2 - 26) / 2
                 y = 24 * self.TILE_SIZE + (self.TILE_SIZE * 2 - 26) / 2
                 robot2 = Robot(
-                    self.sprites, self.level, 0, [x, y], self.DIR_UP, (16 * 2, 0, 13 * 2, 13 * 2)
+                    self.sprites, self.enemies, self.players, self.bonuses, self.level, 0, [x, y], self.DIR_UP, (16 * 2, 0, 13 * 2, 13 * 2)
                 )
                 robot2.controls = [102, 119, 100, 115, 97]
                 self.players.append(robot2)
@@ -796,17 +1102,24 @@ class Gameloader():
                                     player.pressed[3] = False
 
             for player in self.players:
-                # player.auto()
                 if player.state == player.STATE_ALIVE and not self.game_over and self.active:
                     if player.pressed[0]:
                         player.move(self.DIR_UP)
+                        player.path = []
                     elif player.pressed[1]:
                         player.move(self.DIR_RIGHT)
+                        player.path = []
                     elif player.pressed[2]:
                         player.move(self.DIR_DOWN)
+                        player.path = []
                     elif player.pressed[3]:
                         player.move(self.DIR_LEFT)
-                player.update(time_passed)
+                        player.path = []
+                    #else:
+                    #    if len(self.enemies):
+                    #        player.ai_update(time_passed)
+                #player.update(time_passed)
+                player.ai_update(time_passed)
 
             for enemy in self.enemies:
                 if enemy.state == enemy.STATE_DEAD and not self.game_over and self.active:
@@ -815,6 +1128,9 @@ class Gameloader():
                         self.finishLevel()
                 else:
                     enemy.update(time_passed)
+                    # shihang add
+                    detail = tanks.Label(enemy.rect.topleft, "Enemy", 0.5)
+                    self.labels.append(detail)
 
             if not self.game_over and self.active:
                 for player in self.players:
@@ -824,6 +1140,7 @@ class Gameloader():
                             player.bonus = None
                     elif player.state == player.STATE_DEAD:
                         player.superpowers = 0
+                        player.path = []
                         player.lives -= 1
                         if player.lives > 0:
                             self.respawnPlayer(player)
