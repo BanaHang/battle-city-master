@@ -31,13 +31,14 @@ def tanks_init():
 
 
 class Robot(tanks.Player):
-    def __init__(self, sprites, enemies, players, bonuses, level, side, position=None, direction=None, filename=None):
+    def __init__(self, sprites, enemies, players, bonuses, level, side, bullets, position=None, direction=None, filename=None):
         tanks.Player.__init__(self, level, side, position=position, direction=direction, filename=filename)
 
         self.sprites = sprites
         self.enemies = enemies
         self.players = players
         self.bonuses = bonuses
+        self.bullets = bullets
         self.filename = filename
         if filename is None:
             filename = (0, 0, 16 * 2, 16 * 2)
@@ -323,7 +324,6 @@ class Robot(tanks.Player):
             self.path = self.find_path_to_enemy()
 
         new_position = self.path.pop(0)
-        print(new_position)
 
         if new_position[2] == self.DIR_UP:
             if new_position[1] < 0:
@@ -370,6 +370,117 @@ class Robot(tanks.Player):
 
         # if no collision, move robot
         self.rect.topleft = new_rect.topleft
+
+        # if in line with enemies, fire
+        dir = self.in_line_with_enemy()
+        print(dir)
+        if dir >= 0:
+            self.rotate(dir)
+            self.fire()
+
+    def in_line_with_enemy(self):
+        '''
+        check if player is in the same line with enemies
+        :return: direction
+        '''
+
+        step_up, step_right, step_down, step_left = 0, 0, 0, 0
+
+        # check up
+        x, y = self.rect.left, self.rect.top
+        while True:
+            rect_temp = pygame.Rect((x, y), (26, 26))
+
+            ''''''
+            # collisions with tiles, or out of border
+            # if rect_temp.collidelist(self.level.obstacle_rects) != -1 or y < 0:
+            if y < 0:
+                step_up = 0
+                break
+            # collisions with enemies
+            for enemy in self.enemies:
+                if rect_temp.colliderect(enemy.rect):
+                    step_up += 1
+                    break
+            # collisions with bullets
+            for bullet in self.bullets:
+                if rect_temp.colliderect(bullet.rect) and bullet.owner == self.SIDE_ENEMY:
+                    step_up += 1
+                    break
+            y -= 16
+            step_up += 1
+
+        # check right
+        x, y = self.rect.left, self.rect.top
+        while True:
+            rect_temp = pygame.Rect((x, y), (26, 26))
+            # collisions with tiles
+            # if rect_temp.collidelist(self.level.obstacle_rects) != -1 or x > (416 - 26):
+            if x > (416 - 26):
+                step_right = 0
+                break
+            # collisions with enemies
+            for enemy in self.enemies:
+                if rect_temp.colliderect(enemy.rect):
+                    break
+            # collisions with bullets
+            for bullet in self.bullets:
+                if rect_temp.colliderect(bullet.rect) and bullet.owner == self.SIDE_ENEMY:
+                    break
+            x += 16
+            step_right += 1
+
+        # check down
+        x, y = self.rect.left, self.rect.top
+        while True:
+            rect_temp = pygame.Rect((x, y), (26, 26))
+            # collisions with tiles
+            # if rect_temp.collidelist(self.level.obstacle_rects) != -1 or y > (416 - 26):
+            if x > (416 - 26):
+                step_down = 0
+                break
+            # collisions with enemies
+            for enemy in self.enemies:
+                if rect_temp.colliderect(enemy.rect):
+                    break
+            # collisions with bullets
+            for bullet in self.bullets:
+                if rect_temp.colliderect(bullet.rect) and bullet.owner == self.SIDE_ENEMY:
+                    break
+            y += 16
+            step_down += 1
+
+        # check left
+        x, y = self.rect.left, self.rect.top
+        while True:
+            rect_temp = pygame.Rect((x, y), (26, 26))
+            # collisions with tiles
+            # if rect_temp.collidelist(self.level.obstacle_rects) != -1 or x < 0:
+            if x < 0:
+                step_left = 0
+                break
+            # collisions with enemies
+            for enemy in self.enemies:
+                if rect_temp.colliderect(enemy.rect):
+                    break
+            # collisions with bullets
+            for bullet in self.bullets:
+                if rect_temp.colliderect(bullet.rect) and bullet.owner == self.SIDE_ENEMY:
+                    break
+            x -= 16
+            step_left += 1
+
+        if (step_left+step_down+step_right+step_up) == 0:
+            return -1
+        else:
+            if step_up >= step_right and step_up >= step_down and step_up >= step_left:
+                return self.DIR_UP
+            elif step_right >= step_up and step_right >= step_left and step_right >= step_down:
+                return self.DIR_RIGHT
+            elif step_down >= step_right and step_down >= step_right and step_down >= step_up:
+                return self.DIR_DOWN
+            else:
+                return self.DIR_LEFT
 
     def ai_update(self, time_passed):
         tanks.Tank.update(self, time_passed)
@@ -850,7 +961,7 @@ class Gameloader:
             y = 24 * self.TILE_SIZE + (self.TILE_SIZE * 2 - 26) / 2
 
             robot1 = Robot(
-                self.sprites, self.enemies, self.players, self.bonuses, self.level, 0, [x, y], self.DIR_UP, (0, 0, 13 * 2, 13 * 2)
+                self.sprites, self.enemies, self.players, self.bonuses, self.level, 0, self.bullets, [x, y], self.DIR_UP, (0, 0, 13 * 2, 13 * 2)
             )
             self.players.append(robot1)
 
@@ -859,7 +970,7 @@ class Gameloader:
                 x = 16 * self.TILE_SIZE + (self.TILE_SIZE * 2 - 26) / 2
                 y = 24 * self.TILE_SIZE + (self.TILE_SIZE * 2 - 26) / 2
                 robot2 = Robot(
-                    self.sprites, self.enemies, self.players, self.bonuses, self.level, 0, [x, y], self.DIR_UP, (16 * 2, 0, 13 * 2, 13 * 2)
+                    self.sprites, self.enemies, self.players, self.bonuses, self.level, 0, self.bullets, [x, y], self.DIR_UP, (16 * 2, 0, 13 * 2, 13 * 2)
                 )
                 robot2.controls = [102, 119, 100, 115, 97]
                 self.players.append(robot2)
