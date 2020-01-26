@@ -3,6 +3,7 @@ import pygame
 import random
 import os
 from Queue import deque
+import time
 
 
 def tanks_init():
@@ -310,6 +311,12 @@ class Robot(tanks.Player):
 
         # if no collision, move robot
         self.rect.topleft = new_rect.topleft
+        direction, enemy = self.in_line_with_enemy()
+        if direction >= 0:
+            if not self.in_line_with_steel(direction, enemy):
+                self.rotate(direction)
+                self.fire()
+                self.path = self.generatePath(self.direction)
 
     def auto2(self):
         if self.state == self.STATE_EXPLODING:
@@ -320,10 +327,11 @@ class Robot(tanks.Player):
         if self.state != self.STATE_ALIVE or self.paralised:
             return
 
+        new_position = (self.rect.left, self.rect.top, self.direction)
         if len(self.path) == 0:
             self.path = self.find_path_to_enemy()
-
-        new_position = self.path.pop(0)
+        if len(self.path) > 0:
+            new_position = self.path.pop(0)
 
         if new_position[2] == self.DIR_UP:
             if new_position[1] < 0:
@@ -371,121 +379,69 @@ class Robot(tanks.Player):
         # if no collision, move robot
         self.rect.topleft = new_rect.topleft
 
-        # if in line with enemies, fire
-        dir = self.in_line_with_enemy()
-        print(dir)
-        if dir >= 0:
+        # if inline with enemies
+        direction = self.in_line_with_enemy()
+        print(direction)
+        if direction >= 0:
             self.rotate(dir)
             self.fire()
+            self.path = self.find_path_to_enemy()
+            '''
+            #if not self.in_line_with_steel(direction):
+            # print("no steel") 
+            #self.fire()
+            self.path = self.find_path_to_enemy()
+            time.sleep(0.05)'''
 
     def in_line_with_enemy(self):
         '''
         check if player is in the same line with enemies
-        :return: direction
+        :return: direction and the enemy
         '''
+        c_x, c_y = self.rect.centerx, self.rect.centery
 
-        step_up, step_right, step_down, step_left = 0, 0, 0, 0
+        for enemy in self.enemies:
+            # vertical
+            if enemy.rect.left <= c_x <= enemy.rect.right:
+                if enemy.rect.centery < c_y:
+                    return self.DIR_UP, enemy
+                elif enemy.rect.centery > c_y:
+                    return self.DIR_DOWN, enemy
+            # horizontal
+            if enemy.rect.top <= c_y <= enemy.rect.bottom:
+                if enemy.rect.centerx < c_x:
+                    return self.DIR_LEFT, enemy
+                elif enemy.rect.centerx > c_x:
+                    return self.DIR_RIGHT, enemy
+        return -1, None
 
-        # check up
-        x, y = self.rect.left, self.rect.top
-        while True:
-            rect_temp = pygame.Rect((x, y), (26, 26))
-
-            ''''''
-            # collisions with tiles, or out of border
-            # if rect_temp.collidelist(self.level.obstacle_rects) != -1 or y < 0:
-            if y < 0:
-                step_up = 0
-                break
-            # collisions with enemies
-            for enemy in self.enemies:
-                if rect_temp.colliderect(enemy.rect):
-                    step_up += 1
-                    break
-            # collisions with bullets
-            for bullet in self.bullets:
-                if rect_temp.colliderect(bullet.rect) and bullet.owner == self.SIDE_ENEMY:
-                    step_up += 1
-                    break
-            y -= 16
-            step_up += 1
-
-        # check right
-        x, y = self.rect.left, self.rect.top
-        while True:
-            rect_temp = pygame.Rect((x, y), (26, 26))
-            # collisions with tiles
-            # if rect_temp.collidelist(self.level.obstacle_rects) != -1 or x > (416 - 26):
-            if x > (416 - 26):
-                step_right = 0
-                break
-            # collisions with enemies
-            for enemy in self.enemies:
-                if rect_temp.colliderect(enemy.rect):
-                    break
-            # collisions with bullets
-            for bullet in self.bullets:
-                if rect_temp.colliderect(bullet.rect) and bullet.owner == self.SIDE_ENEMY:
-                    break
-            x += 16
-            step_right += 1
-
-        # check down
-        x, y = self.rect.left, self.rect.top
-        while True:
-            rect_temp = pygame.Rect((x, y), (26, 26))
-            # collisions with tiles
-            # if rect_temp.collidelist(self.level.obstacle_rects) != -1 or y > (416 - 26):
-            if x > (416 - 26):
-                step_down = 0
-                break
-            # collisions with enemies
-            for enemy in self.enemies:
-                if rect_temp.colliderect(enemy.rect):
-                    break
-            # collisions with bullets
-            for bullet in self.bullets:
-                if rect_temp.colliderect(bullet.rect) and bullet.owner == self.SIDE_ENEMY:
-                    break
-            y += 16
-            step_down += 1
-
-        # check left
-        x, y = self.rect.left, self.rect.top
-        while True:
-            rect_temp = pygame.Rect((x, y), (26, 26))
-            # collisions with tiles
-            # if rect_temp.collidelist(self.level.obstacle_rects) != -1 or x < 0:
-            if x < 0:
-                step_left = 0
-                break
-            # collisions with enemies
-            for enemy in self.enemies:
-                if rect_temp.colliderect(enemy.rect):
-                    break
-            # collisions with bullets
-            for bullet in self.bullets:
-                if rect_temp.colliderect(bullet.rect) and bullet.owner == self.SIDE_ENEMY:
-                    break
-            x -= 16
-            step_left += 1
-
-        if (step_left+step_down+step_right+step_up) == 0:
-            return -1
-        else:
-            if step_up >= step_right and step_up >= step_down and step_up >= step_left:
-                return self.DIR_UP
-            elif step_right >= step_up and step_right >= step_left and step_right >= step_down:
-                return self.DIR_RIGHT
-            elif step_down >= step_right and step_down >= step_right and step_down >= step_up:
-                return self.DIR_DOWN
-            else:
-                return self.DIR_LEFT
+    def in_line_with_steel(self, direction, enemy):
+        '''
+        check if a steel is between the player and the enemy
+        :return: bool
+        '''
+        c_x, c_y = self.rect.centerx, self.rect.centery
+        e_x, e_y = enemy.rect.centerx, enemy.rect.centery
+        for tile in self.level.mapr:
+            if tile.type == self.level.TILE_STEEL:
+                if direction == self.DIR_UP:
+                    if tile.left <= c_x <= tile.right and e_y < tile.centery < c_y:
+                        return True
+                if direction == self.DIR_DOWN:
+                    if tile.left <= c_x <= tile.right and c_y < tile.centery < e_y:
+                        return True
+                if direction == self.DIR_LEFT:
+                    if tile.top <= c_y <= tile.bottom and e_x < tile.centerx < c_x:
+                        return True
+                if direction == self.DIR_RIGHT:
+                    if tile.top <= c_y <= tile.bottom and c_x < tile.centerx < e_x:
+                        return True
+        return False
 
     def ai_update(self, time_passed):
         tanks.Tank.update(self, time_passed)
         if self.state == self.STATE_ALIVE and not self.paralised and len(self.enemies):
-            self.auto2()
+            self.auto()
 
 
 class Gameloader:
@@ -944,6 +900,10 @@ class Gameloader:
         """ Respawn player """
 
         player.reset()
+
+        # clear player path
+        player.path = []
+
         if clear_scores:
             player.trophies = {
                 "bonus": 0, "enemy0": 0, "enemy1": 0, "enemy2": 0, "enemy3": 0
@@ -1115,6 +1075,8 @@ class Gameloader:
         del self.bullets[:]
         del self.enemies[:]
         del self.bonuses[:]
+
+        del self.labels[:]
         self.castle.rebuild()
         del self.gtimer.timers[:]
 
@@ -1226,10 +1188,7 @@ class Gameloader:
                     elif player.pressed[3]:
                         player.move(self.DIR_LEFT)
                         player.path = []
-                    #else:
-                    #    if len(self.enemies):
-                    #        player.ai_update(time_passed)
-                #player.update(time_passed)
+                # player.update(time_passed)
                 player.ai_update(time_passed)
 
             for enemy in self.enemies:
@@ -1240,7 +1199,7 @@ class Gameloader:
                 else:
                     enemy.update(time_passed)
                     # shihang add
-                    detail = tanks.Label(enemy.rect.topleft, "Enemy", 0.5)
+                    detail = tanks.Label(enemy.rect.topleft, "Enemy", 1)
                     self.labels.append(detail)
 
             if not self.game_over and self.active:
@@ -1251,7 +1210,6 @@ class Gameloader:
                             player.bonus = None
                     elif player.state == player.STATE_DEAD:
                         player.superpowers = 0
-                        player.path = []
                         player.lives -= 1
                         if player.lives > 0:
                             self.respawnPlayer(player)
