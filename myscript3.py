@@ -32,7 +32,7 @@ def tanks_init():
 
 
 class Robot(tanks.Player):
-    def __init__(self, sprites, enemies, players, bonuses, level, side, bullets, position=None, direction=None, filename=None):
+    def __init__(self, sprites, enemies, players, bonuses, level, side, bullets, castle, position=None, direction=None, filename=None):
         tanks.Player.__init__(self, level, side, position=position, direction=direction, filename=filename)
 
         self.sprites = sprites
@@ -40,6 +40,7 @@ class Robot(tanks.Player):
         self.players = players
         self.bonuses = bonuses
         self.bullets = bullets
+        self.castle = castle
         self.filename = filename
         if filename is None:
             filename = (0, 0, 16 * 2, 16 * 2)
@@ -313,7 +314,7 @@ class Robot(tanks.Player):
         self.rect.topleft = new_rect.topleft
         direction, enemy = self.in_line_with_enemy()
         if direction >= 0:
-            if not self.in_line_with_steel(direction, enemy):
+            if not self.in_line_with_steel(direction, enemy) and not self.destory_castle(direction):
                 self.rotate(direction)
                 self.fire()
                 self.path = self.generatePath(self.direction)
@@ -435,6 +436,37 @@ class Robot(tanks.Player):
                         return True
                 if direction == self.DIR_RIGHT:
                     if tile.top <= c_y <= tile.bottom and c_x < tile.centerx < e_x:
+                        return True
+        return False
+
+    def destroy_castle(self, direction):
+        '''
+        detect if player will destroy the castle, when fire at the specific direction . if will return true, else not.
+        :return: bool
+        '''
+
+        player_x, player_y = self.rect.centerx, self.rect.centery
+
+        if direction == self.DIR_RIGHT:
+            if self.castle.rect.top <= player_y <= self.castle.rect.bottom:
+                for enemy in self.enemies:
+                    if enemy.rect.top <= player_y <= enemy.rect.bottom and player_x < enemy.rect.centerx < self.castle.rect.left:
+                        return False
+                    else:
+                        return True
+        if direction == self.DIR_LEFT:
+            if self.castle.rect.top <= player_y <= self.castle.rect.bottom:
+                for enemy in self.enemies:
+                    if enemy.rect.top <= player_y <= enemy.rect.bottom and self.castle.rect.right < enemy.rect.centerx < player_x:
+                        return False
+                    else:
+                        return True
+        if direction == self.DIR_DOWN:
+            if self.castle.rect.left <= player_x <= self.castle.rect.right:
+                for enemy in self.enemies:
+                    if enemy.rect.left <= player_x <= enemy.rect.right and player_y < enemy.rect.centery < self.castle.rect.top:
+                        return False
+                    else:
                         return True
         return False
 
@@ -921,7 +953,7 @@ class Gameloader:
             y = 24 * self.TILE_SIZE + (self.TILE_SIZE * 2 - 26) / 2
 
             robot1 = Robot(
-                self.sprites, self.enemies, self.players, self.bonuses, self.level, 0, self.bullets, [x, y], self.DIR_UP, (0, 0, 13 * 2, 13 * 2)
+                self.sprites, self.enemies, self.players, self.bonuses, self.level, 0, self.bullets, self.castle, [x, y], self.DIR_UP, (0, 0, 13 * 2, 13 * 2)
             )
             self.players.append(robot1)
 
@@ -930,7 +962,7 @@ class Gameloader:
                 x = 16 * self.TILE_SIZE + (self.TILE_SIZE * 2 - 26) / 2
                 y = 24 * self.TILE_SIZE + (self.TILE_SIZE * 2 - 26) / 2
                 robot2 = Robot(
-                    self.sprites, self.enemies, self.players, self.bonuses, self.level, 0, self.bullets, [x, y], self.DIR_UP, (16 * 2, 0, 13 * 2, 13 * 2)
+                    self.sprites, self.enemies, self.players, self.bonuses, self.level, 0, self.bullets, self.castle, [x, y], self.DIR_UP, (16 * 2, 0, 13 * 2, 13 * 2)
                 )
                 robot2.controls = [102, 119, 100, 115, 97]
                 self.players.append(robot2)
