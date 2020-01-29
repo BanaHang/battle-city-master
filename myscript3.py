@@ -3,7 +3,6 @@ import pygame
 import random
 import os
 from Queue import deque
-import time
 
 
 def tanks_init():
@@ -171,7 +170,7 @@ class Robot(tanks.Player):
         '''
         find path to enemy by bfs
         :param enemy: Tank.Enemy
-        :return: path(list)
+        :return: [(x, y, dir),]
         '''
         x = self.rect.left
         y = self.rect.top
@@ -250,6 +249,129 @@ class Robot(tanks.Player):
             x, y = x_temp, y_temp
         return path
 
+    def find_step_to_enemy(self, enemy):
+        '''
+        move to enemy in steps
+        :return:
+        '''
+        cur_dis = self.manhattan_distance(self.rect.center, enemy.rect.center)
+
+        # up
+        new_rect = pygame.Rect((self.rect.left, self.rect.top-self.speed), (26, 26))
+        print(new_rect.top)
+        if new_rect.top >= 0 and not self.collide(new_rect):
+            if self.manhattan_distance(self.rect.center, new_rect.center) < cur_dis:
+                return self.DIR_UP
+        # down
+        new_rect = pygame.Rect((self.rect.left, self.rect.top + self.speed), (26, 26))
+        if self.rect.top + self.speed <= (416-26) and not self.collide(new_rect):
+            if self.manhattan_distance(self.rect.center, new_rect.center) < cur_dis:
+                return self.DIR_DOWN
+        # left
+        new_rect = pygame.Rect((self.rect.left - self.speed, self.rect.top), (26, 26))
+        if self.rect.left - self.speed >= 0 and not self.collide(new_rect):
+            if self.manhattan_distance(self.rect.center, new_rect.center) < cur_dis:
+                return self.DIR_LEFT
+        # right
+        new_rect = pygame.Rect((self.rect.left + self.speed, self.rect.top), (26, 26))
+        if self.rect.left + self.speed <= (416-26) and not self.collide(new_rect):
+            if self.manhattan_distance(self.rect.center, new_rect.center) < cur_dis:
+                return self.DIR_RIGHT
+
+    def manhattan_distance(self, pos1, pos2):
+        return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
+
+    def collide(self, rect):
+        '''
+        judge if rect is collide with obstacles, bullets or tanks
+        :param rect: pygame.Rect
+        :return:bool
+        '''
+        if rect.collidelist(self.level.obstacle_rects) == -1 and rect.collidelist(self.enemies) == -1 and rect.collidelist(self.bullets) == -1:
+            for player in self.players:
+                if rect.colliderect(player.rect) and self != player and player.state == player.STATE_ALIVE and rect.colliderect(player.rect):
+                    return True
+            return False
+        return True
+
+    def dodge_bullets(self):
+        '''
+        dodge the bullets
+        :return: []
+        '''
+        path = []
+        # check bullets
+        for bullet in self.bullets:
+            if bullet.direction == bullet.DIR_UP:
+                if bullet.rect.centery > self.rect.centery and self.rect.left <= bullet.rect.centerx <= self.rect.right:
+                    # try dodge
+                    if (bullet.rect.centerx - self.rect.left) > (self.rect.right - bullet.rect.centerx):
+                        gap = self.rect.right - bullet.rect.centerx
+                        new_rect = pygame.Rect((self.rect.left - gap - 1, self.rect.top), (26, 26))
+                        if not self.collide(new_rect):
+                            for px in range(0, gap - 2, self.speed):
+                                path.append((self.rect.left - px, self.rect.top))
+                            break
+                    else:
+                        gap = bullet.rect.centerx - self.rect.left
+                        new_rect = pygame.Rect((self.rect.left + gap + 1, self.rect.top), (26, 26))
+                        if not self.collide(new_rect):
+                            for px in range(0, gap + 2, self.speed):
+                                path.append((self.rect.left + px, self.rect.top))
+                            break
+            if bullet.direction == bullet.DIR_DOWN:
+                if bullet.rect.centery < self.rect.centery and self.rect.left <= bullet.rect.centerx <= self.rect.right:
+                    # try dodge
+                    if (bullet.rect.centerx - self.rect.left) > (self.rect.right - bullet.rect.centerx):
+                        gap = self.rect.right - bullet.rect.centerx
+                        new_rect = pygame.Rect((self.rect.left - gap - 1, self.rect.top), (26, 26))
+                        if not self.collide(new_rect):
+                            for px in range(0, gap - 2, self.speed):
+                                path.append((self.rect.left - px, self.rect.top))
+                            break
+                    else:
+                        gap = bullet.rect.centerx - self.rect.left
+                        new_rect = pygame.Rect((self.rect.left + gap + 1, self.rect.top), (26, 26))
+                        if not self.collide(new_rect):
+                            for px in range(0, gap + 2, self.speed):
+                                path.append((self.rect.left + px, self.rect.top))
+                            break
+            if bullet.direction == bullet.DIR_LEFT:
+                if bullet.rect.centerx < self.rect.centerx and self.rect.top <= bullet.rect.centery <= self.rect.bottom:
+                    # try dodge
+                    if (bullet.rect.centery - self.rect.top) > (self.rect.bottom - bullet.rect.centery):
+                        gap = self.rect.bottom - bullet.rect.centery
+                        new_rect = pygame.Rect((self.rect.left, self.rect.top + gap + 2), (26, 26))
+                        if not self.collide(new_rect):
+                            for px in range(0, gap + 2, self.speed):
+                                path.append((self.rect.left, self.rect.top + px))
+                            break
+                    else:
+                        gap = bullet.rect.centery - self.rect.top
+                        new_rect = pygame.Rect((self.rect.left, self.rect.top - gap - 2), (26, 26))
+                        if not self.collide(new_rect):
+                            for px in range(0, gap + 2, self.speed):
+                                path.append((self.rect.left, self.rect.top - px))
+                            break
+            if bullet.direction == bullet.DIR_RIGHT:
+                if bullet.rect.centerx > self.rect.centerx and self.rect.top <= bullet.rect.centery <= self.rect.bottom:
+                    # try dodge
+                    if (bullet.rect.centery - self.rect.top) > (self.rect.bottom - bullet.rect.centery):
+                        gap = self.rect.bottom - bullet.rect.centery
+                        new_rect = pygame.Rect((self.rect.left, self.rect.top + gap + 2), (26, 26))
+                        if not self.collide(new_rect):
+                            for px in range(0, gap + 2, self.speed):
+                                path.append((self.rect.left, self.rect.top + px))
+                            break
+                    else:
+                        gap = bullet.rect.centery - self.rect.top
+                        new_rect = pygame.Rect((self.rect.left, self.rect.top - gap - 2), (26, 26))
+                        if not self.collide(new_rect):
+                            for px in range(0, gap + 2, self.speed):
+                                path.append((self.rect.left, self.rect.top - px))
+                            break
+        return path
+
     def auto(self):
 
         if self.state == self.STATE_EXPLODING:
@@ -314,7 +436,7 @@ class Robot(tanks.Player):
         self.rect.topleft = new_rect.topleft
         direction, enemy = self.in_line_with_enemy()
         if direction >= 0:
-            if not self.in_line_with_steel(direction, enemy) and not self.destory_castle(direction):
+            if not self.in_line_with_steel(direction, enemy) and not self.destroy_castle(direction):
                 self.rotate(direction)
                 self.fire()
                 self.path = self.generatePath(self.direction)
@@ -328,71 +450,100 @@ class Robot(tanks.Player):
         if self.state != self.STATE_ALIVE or self.paralised:
             return
 
-        new_position = (self.rect.left, self.rect.top, self.direction)
-        if len(self.path) == 0:
+        if not self.path:
             self.path = self.find_path_to_enemy()
-        if len(self.path) > 0:
-            new_position = self.path.pop(0)
 
-        if new_position[2] == self.DIR_UP:
+        new_position = self.path.pop(0)
+
+        # move
+        if self.direction == self.DIR_UP:
             if new_position[1] < 0:
                 self.path = self.find_path_to_enemy()
                 return
-        elif new_position[2] == self.DIR_RIGHT:
+        elif self.direction == self.DIR_RIGHT:
             if new_position[0] > (416 - 26):
                 self.path = self.find_path_to_enemy()
                 return
-        elif new_position[2] == self.DIR_DOWN:
+        elif self.direction == self.DIR_DOWN:
             if new_position[1] > (416 - 26):
                 self.path = self.find_path_to_enemy()
                 return
-        elif new_position[2] == self.DIR_LEFT:
+        elif self.direction == self.DIR_LEFT:
             if new_position[0] < 0:
                 self.path = self.find_path_to_enemy()
                 return
 
         new_rect = pygame.Rect((new_position[0], new_position[1]), [26, 26])
-        self.rotate(new_position[2])
 
-        # collisions with tiles
-        if new_rect.collidelist(self.level.obstacle_rects) != -1:
+        # check collisions
+        if self.collide(new_rect):
             self.path = self.find_path_to_enemy()
             return
 
-        # collisions with enemies
-        for enemy in self.enemies:
-            if new_rect.colliderect(enemy.rect):
-                self.fire()
-                self.path = self.find_path_to_enemy()
-                return
-
-        # collisions with players
-        for player in self.players:
-            if player != self and player.state == player.STATE_ALIVE and new_rect.colliderect(player.rect):
-                self.path = self.find_path_to_enemy()
-                return
-
+        '''
+        # in line with bullet
+        temp = self.in_line_with_bullet(self.rect)
+        if temp[0] > -1:
+            print("bullet dir {0}".format(temp[0]))
+            # self.path = self.generatePath(self.direction, True)
+            self.path = self.dodge_bullets()
+        '''
         # collisions with bonuses
         for bonus in self.bonuses:
             if new_rect.colliderect(bonus.rect):
                 self.bonus = bonus
 
         # if no collision, move robot
+        self.rotate(new_position[2])
         self.rect.topleft = new_rect.topleft
 
-        # if inline with enemies
-        direction = self.in_line_with_enemy()
-        print(direction)
+        direction, enemy = self.in_line_with_enemy()
         if direction >= 0:
-            self.rotate(dir)
-            self.fire()
-            self.path = self.find_path_to_enemy()
-            '''
-            #if not self.in_line_with_steel(direction):
-            # print("no steel") 
-            #self.fire()
-            self.path = self.find_path_to_enemy()
-            time.sleep(0.05)'''
+            if not self.in_line_with_steel(direction, enemy) and not self.destroy_castle(direction):
+                self.rotate(direction)
+                self.fire()
+                self.path = self.find_path_to_enemy()
+
+    def auto3(self):
+        if self.state == self.STATE_EXPLODING:
+            if not self.explosion.active:
+                self.state = self.STATE_DEAD
+                del self.explosion
+
+        if self.state != self.STATE_ALIVE or self.paralised:
+            return
+
+        e = None
+        if len(self.enemies):
+            e = self.enemies[0]
+
+        direction = self.find_step_to_enemy(e)
+        print(direction)
+        new_rect = self.rect
+
+        if direction == self.DIR_UP:
+            new_rect = pygame.Rect((self.rect.left, self.rect.top-self.speed), (26, 26))
+        elif direction == self.DIR_DOWN:
+            new_rect = pygame.Rect((self.rect.left, self.rect.top + self.speed), (26, 26))
+        elif direction == self.DIR_LEFT:
+            new_rect = pygame.Rect((self.rect.left - self.speed, self.rect.top), (26, 26))
+        else:
+            new_rect = pygame.Rect((self.rect.left + self.speed, self.rect.top), (26, 26))
+
+        # if no collision, move robot
+        self.rotate(direction)
+        self.rect.topleft = new_rect.topleft
+
+        # collisions with bonuses
+        for bonus in self.bonuses:
+            if self.rect.colliderect(bonus.rect):
+                self.bonus = bonus
+
+        dir, enemy = self.in_line_with_enemy()
+        if dir >= 0:
+            if not self.in_line_with_steel(dir, enemy) and not self.destroy_castle(dir):
+                self.rotate(dir)
+                self.fire()
 
     def in_line_with_enemy(self):
         '''
@@ -439,9 +590,31 @@ class Robot(tanks.Player):
                         return True
         return False
 
+    def in_line_with_bullet(self, rect):
+        '''
+        check if player is in the same line with bullets
+        :return: direction and the bullet
+        '''
+        c_x, c_y = rect.centerx, rect.centery
+
+        for bullet in self.bullets:
+            # vertical
+            if bullet.rect.left <= c_x <= bullet.rect.right:
+                if bullet.rect.centery < c_y and bullet.direction == bullet.DIR_DOWN:
+                    return self.DIR_UP, bullet
+                elif bullet.rect.centery > c_y and bullet.direction == bullet.DIR_UP:
+                    return self.DIR_DOWN, bullet
+            # horizontal
+            if bullet.rect.top <= c_y <= bullet.rect.bottom:
+                if bullet.rect.centerx < c_x and bullet.direction == bullet.DIR_RIGHT:
+                    return self.DIR_LEFT, bullet
+                elif bullet.rect.centerx > c_x and bullet.direction == bullet.DIR_LEFT:
+                    return self.DIR_RIGHT, bullet
+        return -1, None
+
     def destroy_castle(self, direction):
         '''
-        detect if player will destroy the castle, when fire at the specific direction . if will return true, else not.
+        detect if player will destroy the castle, when fire at the specific direction . if will, return true; else not.
         :return: bool
         '''
 
@@ -473,7 +646,7 @@ class Robot(tanks.Player):
     def ai_update(self, time_passed):
         tanks.Tank.update(self, time_passed)
         if self.state == self.STATE_ALIVE and not self.paralised and len(self.enemies):
-            self.auto()
+            self.auto3()
 
 
 class Gameloader:
