@@ -167,6 +167,10 @@ class Robot(tanks.Player):
         return positions
 
     def find_path_to_enemy(self):
+        '''
+        find path to enemy by BFS
+        :return:[(x, y, direction)]
+        '''
         del self.path[:]
 
         x = self.rect.left
@@ -594,59 +598,50 @@ class Robot(tanks.Player):
         if self.state != self.STATE_ALIVE or self.paralised:
             return
 
-        enemies = self.enemies
-        sorted_enemies = sorted(enemies, key=lambda e: self.manhattan_distance(e.rect.center, self.rect.center))
-        # if no enemy
-        if len(enemies) == 0:
+        bullet_warning = self.in_line_with_bullet(self.rect)
+
+        if bullet_warning[0] > -1:
+            # if a bullet will shoot player, try escape
+            
             return
 
-        if len(self.path) == 0:
-            self.path = self.find_path_to_enemy2(sorted_enemies[0])
+        else:
+            # if safe
 
-        # if find no path
-        if len(self.path) == 0:
+            # if should fire
+            fire_direction, enemy = self.should_fire()
+            if fire_direction >= 0 and not self.destroy_castle(fire_direction):
+                if not self.in_line_with_steel(fire_direction, enemy) and not self.in_line_with_bricks(fire_direction, enemy):
+                    print("should fire")
+                    self.rotate(fire_direction, True)
+                    self.fire()
+
+            # find path to reach enemy
+            if len(self.path) == 0:
+                self.path = self.find_path_to_enemy()
+
+            if len(self.path) == 0:
+                # if find no path
+                return
+            else:
+                new_position = self.path.pop(0)
+
+                if new_position[0] < 0 or new_position[0] > (416 - 26) or self.collide(pygame.Rect((new_position[0], new_position[1]), (26, 26))):
+                    # if new position is invalid or collide with tiles, tanks and bullets, try another path
+                    self.path = self.find_path_to_enemy()
+                    return
+                else:
+                    # if new position is valid, move to new position
+                    new_rect = pygame.Rect(new_position, (26, 26))
+
+                    for bonus in self.bonuses:
+                        # if new rect collide with bonuses
+                        if new_rect.colliderect(bonus.rect):
+                            self.bonus = bonus
+
+                    self.rotate(new_position[2])
+                    self.rect.topleft = new_rect.topleft
             return
-        new_position = self.path.pop(0)
-
-        # move
-        if self.direction == self.DIR_UP:
-            if new_position[1] < 0:
-                self.path = self.find_path_to_enemy2(sorted_enemies[0])
-                return
-        elif self.direction == self.DIR_RIGHT:
-            if new_position[0] > (416 - 26):
-                self.path = self.find_path_to_enemy2(sorted_enemies[0])
-                return
-        elif self.direction == self.DIR_DOWN:
-            if new_position[1] > (416 - 26):
-                self.path = self.find_path_to_enemy2(sorted_enemies[0])
-                return
-        elif self.direction == self.DIR_LEFT:
-            if new_position[0] < 0:
-                self.path = self.find_path_to_enemy2(sorted_enemies[0])
-                return
-
-        new_rect = pygame.Rect((new_position[0], new_position[1]), [26, 26])
-
-        # check collisions
-        if self.collide(new_rect):
-            self.path = self.find_path_to_enemy2(sorted_enemies[0])
-            return
-
-        # collisions with bonuses
-        for bonus in self.bonuses:
-            if new_rect.colliderect(bonus.rect):
-                self.bonus = bonus
-
-        # if no collision, move robot
-        self.rect.topleft = new_rect.topleft
-
-        direction, enemy = self.in_line_with_enemy()
-        if direction >= 0:
-            if not self.in_line_with_steel(direction) and not self.destroy_castle(direction):
-                self.rotate(direction, True)
-                self.fire()
-                self.path = self.find_path_to_enemy2(sorted_enemies[0])
 
     def in_line_with_enemy(self):
         '''
