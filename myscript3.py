@@ -200,14 +200,14 @@ class Robot(tanks.Player):
             for m in move:
                 fix_x = current[0] + m[0]
                 fix_y = current[1] + m[1]
-                new_rect = pygame.Rect((fix_x * unit, fix_y * unit), [26, 26])
+                new_rect = pygame.Rect((fix_x * unit+3, fix_y * unit+3), [26, 26])
 
                 # if visited
                 if visit[fix_x][fix_y]:
                     continue
 
                 # detect border
-                if fix_x * unit < 0 or fix_x * unit > (416 - 26) or fix_y * unit < 0 or fix_y * unit > (416 - 26):
+                if fix_x * unit+3 < 0 or fix_x * unit+3 > (416 - 26) or fix_y * unit+3 < 0 or fix_y * unit+3 > (416 - 26):
                     continue
 
                 # collisions with tiles
@@ -454,6 +454,47 @@ class Robot(tanks.Player):
             print("try escape")
         return path
 
+    def escape(self, bullet):
+        '''
+        escape from the line bullet move
+        :param bullet:
+        :return: [(x, y, direction)]
+        '''
+        path = []
+        if bullet.direction == bullet.DIR_UP or bullet.direction == bullet.DIR_DOWN:
+            gap_left = self.rect.right - bullet.rect.left
+            gap_right = bullet.rect.right - self.rect.left
+
+            if gap_left < gap_right:
+                # if the path to escape left is more short, move left
+                new_rect = self.rect.move(-gap_left-3, 0)
+                if new_rect.left >= 0 and not self.collide(new_rect):
+                    for px in range(0, gap_left+3, self.speed):
+                        path.append((self.rect.left-px, self.rect.top, self.DIR_LEFT))
+            else:
+                # move right
+                new_rect = self.rect.move(gap_right+3, 0)
+                if new_rect.left <= (416-26) and not self.collide(new_rect):
+                    for px in range(0, gap_right+3, self.speed):
+                        path.append((self.rect.left+px, self.rect.top, self.DIR_RIGHT))
+
+        elif bullet.direction == bullet.DIR_LEFT or bullet.direction == bullet.DIR_RIGHT:
+            gap_top = self.rect.bottom - bullet.rect.top
+            gap_bottom = bullet.rect.bottom - self.rect.top
+            if gap_top < gap_bottom:
+                # if the path to escape top is more short, move top
+                new_rect = self.rect.move(0, -gap_top-3)
+                if new_rect.left >= 0 and not self.collide(new_rect):
+                    for px in range(0, gap_top+3, self.speed):
+                        path.append((self.rect.left, self.rect.top-px, self.DIR_UP))
+            else:
+                # move bottom
+                new_rect = self.rect.move(0, gap_bottom+3)
+                if new_rect.left <= (416-26) and not self.collide(new_rect):
+                    for px in range(0, gap_bottom+3, self.speed):
+                        path.append((self.rect.left, self.rect.top+px, self.DIR_DOWN))
+        return path
+
     def auto(self):
 
         if self.state == self.STATE_EXPLODING:
@@ -601,10 +642,43 @@ class Robot(tanks.Player):
         bullet_warning = self.in_line_with_bullet(self.rect)
 
         if bullet_warning[0] > -1:
+            print("try escape, dir is {0}".format(bullet_warning[0]))
             # if a bullet will shoot player, try escape
-            
-            return
+            target_bullet = bullet_warning[1]
+            escape_path = self.escape(target_bullet)
 
+            if len(escape_path) > 0:
+                # if find escape path
+                self.path = escape_path
+            else:
+                print("try escape, failed")
+                # if no path to move, try find path to reach enemy
+                if len(self.path) == 0:
+                    self.path = self.find_path_to_enemy()
+
+                if len(self.path) == 0:
+                    # if find no path
+                    return
+
+            new_position = self.path.pop(0)
+            print("try escape, dir is {0}".format(new_position[2]))
+
+            if new_position[0] < 0 or new_position[0] > (416 - 26) or new_position[1] < 0 or new_position[1] > (416 - 26) or self.collide(pygame.Rect((new_position[0], new_position[1]), (26, 26))):
+                # if new position is invalid or collide with tiles, tanks and bullets, try another path
+                self.path = self.escape(target_bullet)
+                return
+            else:
+                # if new position is valid, move to new position
+                new_rect = pygame.Rect((new_position[0], new_position[1]), (26, 26))
+
+                for bonus in self.bonuses:
+                    # if new rect collide with bonuses
+                    if new_rect.colliderect(bonus.rect):
+                        self.bonus = bonus
+
+                self.rotate(new_position[2])
+                self.rect.topleft = new_rect.topleft
+            return
         else:
             # if safe
 
@@ -612,11 +686,11 @@ class Robot(tanks.Player):
             fire_direction, enemy = self.should_fire()
             if fire_direction >= 0 and not self.destroy_castle(fire_direction):
                 if not self.in_line_with_steel(fire_direction, enemy) and not self.in_line_with_bricks(fire_direction, enemy):
-                    print("should fire")
+                    print("should fire, dir is {0}".format(fire_direction))
                     self.rotate(fire_direction, True)
                     self.fire()
 
-            # find path to reach enemy
+            # if no path to move, try find path to reach enemy
             if len(self.path) == 0:
                 self.path = self.find_path_to_enemy()
 
@@ -626,20 +700,20 @@ class Robot(tanks.Player):
             else:
                 new_position = self.path.pop(0)
 
-                if new_position[0] < 0 or new_position[0] > (416 - 26) or self.collide(pygame.Rect((new_position[0], new_position[1]), (26, 26))):
+                if new_position[0] < 0 or new_position[0] > (416 - 26) or new_position[1] < 0 or new_position[1] > (416 - 26) or self.collide(pygame.Rect((new_position[0], new_position[1]), (26, 26))):
                     # if new position is invalid or collide with tiles, tanks and bullets, try another path
                     self.path = self.find_path_to_enemy()
                     return
                 else:
                     # if new position is valid, move to new position
-                    new_rect = pygame.Rect(new_position, (26, 26))
+                    new_rect = pygame.Rect((new_position[0], new_position[1]), (26, 26))
 
                     for bonus in self.bonuses:
                         # if new rect collide with bonuses
                         if new_rect.colliderect(bonus.rect):
                             self.bonus = bonus
 
-                    self.rotate(new_position[2])
+                    self.rotate(new_position[2], True)
                     self.rect.topleft = new_rect.topleft
             return
 
@@ -803,7 +877,7 @@ class Robot(tanks.Player):
     def ai_update(self, time_passed):
         tanks.Tank.update(self, time_passed)
         if self.state == self.STATE_ALIVE and not self.paralised and len(self.enemies):
-            self.auto2()
+            self.auto3()
 
 
 class Gameloader:
