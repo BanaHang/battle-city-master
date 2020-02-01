@@ -74,98 +74,6 @@ class Robot(tanks.Player):
 
         self.path = list()
 
-    def generatePath(self, direction=None, fix_direction=False):
-
-        all_directions = [self.DIR_UP, self.DIR_RIGHT, self.DIR_DOWN, self.DIR_LEFT]
-        directions = all_directions
-        opposite_direction = None
-
-        if direction is None:
-            if self.direction in [self.DIR_UP, self.DIR_RIGHT]:
-                opposite_direction = self.direction + 2
-            else:
-                opposite_direction = self.direction - 2
-            random.shuffle(directions)
-            directions.remove(opposite_direction)
-            directions.append(opposite_direction)
-        else:
-            if direction in [self.DIR_UP, self.DIR_RIGHT]:
-                opposite_direction = direction + 2
-            else:
-                opposite_direction = direction - 2
-            directions = all_directions
-            random.shuffle(directions)
-            directions.remove(opposite_direction)
-            directions.remove(direction)
-            directions.insert(0, direction)
-            directions.append(opposite_direction)
-
-        # at first, work with general units (steps) not px
-        x = int(round(self.rect.left / 16))
-        y = int(round(self.rect.top / 16))
-
-        new_direction = None
-
-        for direction in directions:
-            if direction == self.DIR_UP and y > 1:
-                new_pos_rect = self.rect.move(0, -8)
-                if new_pos_rect.collidelist(self.level.obstacle_rects) == -1:
-                    new_direction = direction
-                    break
-            elif direction == self.DIR_RIGHT and x < 24:
-                new_pos_rect = self.rect.move(8, 0)
-                if new_pos_rect.collidelist(self.level.obstacle_rects) == -1:
-                    new_direction = direction
-                    break
-            elif direction == self.DIR_DOWN and y < 24:
-                new_pos_rect = self.rect.move(0, 8)
-                if new_pos_rect.collidelist(self.level.obstacle_rects) == -1:
-                    new_direction = direction
-                    break
-            elif direction == self.DIR_LEFT and x > 1:
-                new_pos_rect = self.rect.move(-8, 0)
-                if new_pos_rect.collidelist(self.level.obstacle_rects) == -1:
-                    new_direction = direction
-                    break
-
-        # if we can go anywhere else, turn around
-        if new_direction is None:
-            new_direction = opposite_direction
-            print "turn around"
-
-        # fix tanks position
-        if fix_direction and new_direction == self.direction:
-            fix_direction = False
-        self.rotate(new_direction, fix_direction)
-
-        positions = []
-
-        x = self.rect.left
-        y = self.rect.top
-
-        axis_fix = 0
-        if new_direction in (self.DIR_RIGHT, self.DIR_LEFT):
-            axis_fix = self.nearest(y, 16) - y
-        else:
-            axis_fix = self.nearest(x, 16) - x
-
-        pixels = self.nearest(random.randint(1, 12) * 32, 32) + axis_fix + 3
-
-        if new_direction == self.DIR_UP:
-            for px in range(0, pixels, self.speed):
-                positions.append([x, y - px])
-        elif new_direction == self.DIR_RIGHT:
-            for px in range(0, pixels, self.speed):
-                positions.append([x + px, y])
-        elif new_direction == self.DIR_DOWN:
-            for px in range(0, pixels, self.speed):
-                positions.append([x, y + px])
-        elif new_direction == self.DIR_LEFT:
-            for px in range(0, pixels, self.speed):
-                positions.append([x - px, y])
-
-        return positions
-
     def find_path_to_enemy(self):
         '''
         find path to enemy by BFS
@@ -259,86 +167,6 @@ class Robot(tanks.Player):
             x, y = x_temp, y_temp
         return path
 
-    def find_path_to_enemy2(self, enemy):
-        path = []
-        distance = self.manhattan_distance(enemy.rect.center, self.rect.center)
-
-        # check neighbour
-        # at first, work with general units (steps) not px
-        directions = [self.DIR_UP, self.DIR_RIGHT, self.DIR_DOWN, self.DIR_LEFT]
-        x = self.rect.left
-        y = self.rect.top
-
-        potential_direction = list()
-
-        for direction in directions:
-            if direction == self.DIR_UP:
-                new_pos_rect = self.rect.move(0, -8)
-                if new_pos_rect.top >= 0 and new_pos_rect.collidelist(self.level.obstacle_rects) == -1 and self.manhattan_distance(new_pos_rect.center, enemy.rect.center) < distance:
-                    potential_direction.append(direction)
-            elif direction == self.DIR_RIGHT:
-                new_pos_rect = self.rect.move(8, 0)
-                if new_pos_rect.right <= 416 and new_pos_rect.collidelist(self.level.obstacle_rects) == -1 and self.manhattan_distance(new_pos_rect.center, enemy.rect.center) < distance:
-                    potential_direction.append(direction)
-            elif direction == self.DIR_DOWN:
-                new_pos_rect = self.rect.move(0, 8)
-                if new_pos_rect.bottom <= 416 and new_pos_rect.collidelist(self.level.obstacle_rects) == -1 and self.manhattan_distance(new_pos_rect.center, enemy.rect.center) < distance:
-                    potential_direction.append(direction)
-            elif direction == self.DIR_LEFT:
-                new_pos_rect = self.rect.move(-8, 0)
-                if new_pos_rect.left >= 0 and new_pos_rect.collidelist(self.level.obstacle_rects) == -1 and self.manhattan_distance(new_pos_rect.center, enemy.rect.center) < distance:
-                    potential_direction.append(direction)
-
-        new_direction = -1
-        if len(potential_direction) == 0:
-            # no direction to move, turn around or move on
-            if self.direction == self.DIR_UP:
-                new_pos_rect = self.rect.move(0, -8)
-                if new_pos_rect.top >= 0 and new_pos_rect.collidelist(self.level.obstacle_rects) == -1:
-                    new_direction = self.DIR_UP
-                else:
-                    new_direction = self.DIR_DOWN
-            elif self.direction == self.DIR_DOWN:
-                new_pos_rect = self.rect.move(0, 8)
-                if new_pos_rect.bottom <= 416 and new_pos_rect.collidelist(self.level.obstacle_rects) == -1:
-                    new_direction = self.DIR_DOWN
-                else:
-                    new_direction = self.DIR_UP
-            elif self.direction == self.DIR_RIGHT:
-                new_pos_rect = self.rect.move(8, 0)
-                if new_pos_rect.right <= 416 and new_pos_rect.collidelist(self.level.obstacle_rects) == -1:
-                    new_direction = self.DIR_RIGHT
-                else:
-                    new_direction = self.DIR_LEFT
-            elif self.direction == self.DIR_LEFT:
-                new_pos_rect = self.rect.move(-8, 0)
-                if new_pos_rect.left >= 0 and new_pos_rect.collidelist(self.level.obstacle_rects) == -1:
-                    new_direction = self.DIR_LEFT
-                else:
-                    new_direction = self.DIR_RIGHT
-        else:
-            # random pick one
-            random.shuffle(potential_direction)
-            new_direction = potential_direction[0]
-
-        if new_direction != self.direction:
-            self.rotate(new_direction, True)
-        if new_direction == self.DIR_UP:
-            for px in range(0, 8, self.speed):
-                path.append((self.rect.left, self.rect.top - px))
-        elif new_direction == self.DIR_DOWN:
-            for px in range(0, 8, self.speed):
-                path.append((self.rect.left, self.rect.top + px))
-        elif new_direction == self.DIR_LEFT:
-            for px in range(0, 8, self.speed):
-                path.append((self.rect.left - px, self.rect.top))
-        elif new_direction == self.DIR_RIGHT:
-            for px in range(0, 8, self.speed):
-                path.append((self.rect.left + px, self.rect.top))
-
-        print("dir {0}, path {1}".format(new_direction, path))
-        return path
-
     def manhattan_distance(self, pos1, pos2):
         return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
@@ -354,105 +182,6 @@ class Robot(tanks.Player):
                     return True
             return False
         return True
-
-    def dodge_bullets(self):
-        '''
-        dodge the bullets
-        :return: [(x,y)]
-        '''
-        path = []
-        # check bullets
-        for bullet in self.bullets:
-            # shoot back
-            if abs(bullet.rect.centerx - self.rect.centerx) <= 3:
-                if bullet.rect.centery > self.rect.centery:
-                    self.rotate(self.DIR_DOWN, True)
-                    print("shoot back")
-                    self.fire()
-                else:
-                    self.rotate(self.DIR_UP, True)
-                    print("shoot back")
-                    self.fire()
-            if abs(bullet.rect.centery - self.rect.centery) <= 3:
-                if bullet.rect.centerx > self.rect.centerx:
-                    self.rotate(self.DIR_RIGHT, True)
-                    print("shoot back")
-                    self.fire()
-                else:
-                    self.rotate(self.DIR_LEFT, True)
-                    print("shoot back")
-                    self.fire()
-            # escape
-            if bullet.direction == bullet.DIR_UP:
-                if bullet.rect.centery > self.rect.centery and self.rect.left-3 <= bullet.rect.centerx <= self.rect.right+3:
-                    if abs(bullet.rect.centerx - self.rect.left) > abs(self.rect.right - bullet.rect.centerx):
-                        gap = abs(self.rect.right - bullet.rect.centerx)
-                        new_rect = pygame.Rect((self.rect.left - gap - 8, self.rect.top), (26, 26))
-                        if not self.collide(new_rect) and (self.rect.left - gap - 8) >= 0:
-                            for px in range(0, gap + 8, self.speed):
-                                path.append((self.rect.left - px, self.rect.top, self.DIR_LEFT))
-                            break
-                    else:
-                        gap = abs(bullet.rect.centerx - self.rect.left)
-                        new_rect = pygame.Rect((self.rect.left + gap + 8, self.rect.top), (26, 26))
-                        if not self.collide(new_rect) and self.rect.left + gap + 8 <= 416:
-                            for px in range(0, gap + 8, self.speed):
-                                path.append((self.rect.left + px, self.rect.top, self.DIR_RIGHT))
-                            break
-            if bullet.direction == bullet.DIR_DOWN:
-                if bullet.rect.centery < self.rect.centery and self.rect.left-3 <= bullet.rect.centerx <= self.rect.right+3:
-                    # try dodge
-                    if abs(bullet.rect.centerx - self.rect.left) > abs(self.rect.right - bullet.rect.centerx):
-                        gap = abs(self.rect.right - bullet.rect.centerx)
-                        new_rect = pygame.Rect((self.rect.left - gap - 8, self.rect.top), (26, 26))
-                        if not self.collide(new_rect) and self.rect.left - gap - 8 >= 0:
-                            for px in range(0, gap + 8, self.speed):
-                                path.append((self.rect.left - px, self.rect.top, self.DIR_LEFT))
-                            break
-                    else:
-                        gap = abs(bullet.rect.centerx - self.rect.left)
-                        new_rect = pygame.Rect((self.rect.left + gap + 8, self.rect.top), (26, 26))
-                        if not self.collide(new_rect) and self.rect.left + gap + 8 <= 416:
-                            for px in range(0, gap + 8, self.speed):
-                                path.append((self.rect.left + px, self.rect.top, self.DIR_RIGHT))
-                            break
-            if bullet.direction == bullet.DIR_LEFT:
-                if bullet.rect.centerx < self.rect.centerx and self.rect.top-3 <= bullet.rect.centery <= self.rect.bottom+3:
-                    # try dodge
-                    if abs(bullet.rect.centery - self.rect.top) > abs(self.rect.bottom - bullet.rect.centery):
-                        gap = abs(self.rect.bottom - bullet.rect.centery)
-                        new_rect = pygame.Rect((self.rect.left, self.rect.top + gap + 8), (26, 26))
-                        if not self.collide(new_rect) and self.rect.top + gap + 8 <= 416:
-                            for px in range(0, gap + 8, self.speed):
-                                path.append((self.rect.left, self.rect.top + px, self.DIR_DOWN))
-                            break
-                    else:
-                        gap = abs(bullet.rect.centery - self.rect.top)
-                        new_rect = pygame.Rect((self.rect.left, self.rect.top - gap - 8), (26, 26))
-                        if not self.collide(new_rect) and self.rect.top - gap - 8 >= 0:
-                            for px in range(0, gap + 8, self.speed):
-                                path.append((self.rect.left, self.rect.top - px, self.DIR_UP))
-                            break
-            if bullet.direction == bullet.DIR_RIGHT:
-                if bullet.rect.centerx > self.rect.centerx and self.rect.top-4 <= bullet.rect.centery <= self.rect.bottom+4:
-                    # try dodge
-                    if abs(bullet.rect.centery - self.rect.top) > abs(self.rect.bottom - bullet.rect.centery):
-                        gap = abs(self.rect.bottom - bullet.rect.centery)
-                        new_rect = pygame.Rect((self.rect.left, self.rect.top + gap + 8), (26, 26))
-                        if not self.collide(new_rect) and self.rect.top + gap + 8 <= 416:
-                            for px in range(0, gap + 8, self.speed):
-                                path.append((self.rect.left, self.rect.top + px, self.DIR_DOWN))
-                            break
-                    else:
-                        gap = bullet.rect.centery - self.rect.top
-                        new_rect = pygame.Rect((self.rect.left, self.rect.top - gap - 8), (26, 26))
-                        if not self.collide(new_rect) and self.rect.top - gap - 8 >= 0:
-                            for px in range(0, gap + 8, self.speed):
-                                path.append((self.rect.left, self.rect.top - px, self.DIR_UP))
-                            break
-        if len(path):
-            print("try escape")
-        return path
 
     def escape(self, bullet):
         '''
@@ -495,141 +224,6 @@ class Robot(tanks.Player):
                         path.append((self.rect.left, self.rect.top+px, self.DIR_DOWN))
         return path
 
-    def auto(self):
-
-        if self.state == self.STATE_EXPLODING:
-            if not self.explosion.active:
-                self.state = self.STATE_DEAD
-                del self.explosion
-
-        if self.state != self.STATE_ALIVE or self.paralised:
-            return
-
-        if not self.path:
-            self.path = self.generatePath(None, True)
-
-        new_position = self.path.pop(0)
-
-        # move
-        if self.direction == self.DIR_UP:
-            if new_position[1] < 0:
-                self.path = self.generatePath(self.direction, True)
-                return
-        elif self.direction == self.DIR_RIGHT:
-            if new_position[0] > (416 - 26):
-                self.path = self.generatePath(self.direction, True)
-                return
-        elif self.direction == self.DIR_DOWN:
-            if new_position[1] > (416 - 26):
-                self.path = self.generatePath(self.direction, True)
-                return
-        elif self.direction == self.DIR_LEFT:
-            if new_position[0] < 0:
-                self.path = self.generatePath(self.direction, True)
-                return
-
-        new_rect = pygame.Rect(new_position, [26, 26])
-
-        # collisions with tiles
-        if new_rect.collidelist(self.level.obstacle_rects) != -1:
-            self.path = self.generatePath(self.direction, True)
-            return
-
-        # collisions with enemies
-        for enemy in self.enemies:
-            if new_rect.colliderect(enemy.rect):
-                self.fire()
-                self.turnAround()
-                self.path = self.generatePath(self.direction)
-                return
-
-        # collisions with players
-        for player in self.players:
-            if player != self and player.state == player.STATE_ALIVE and new_rect.colliderect(player.rect):
-                self.turnAround()
-                self.path = self.generatePath(self.direction)
-                return
-
-        # collisions with bonuses
-        for bonus in self.bonuses:
-            if new_rect.colliderect(bonus.rect):
-                self.bonus = bonus
-
-        # if no collision, move robot
-        self.rect.topleft = new_rect.topleft
-        direction, enemy = self.in_line_with_enemy()
-        if direction >= 0:
-            if not self.in_line_with_steel(direction, enemy) and not self.destroy_castle(direction):
-                self.rotate(direction, True)
-                self.fire()
-                self.path = self.generatePath(self.direction)
-
-    def auto2(self):
-        if self.state == self.STATE_EXPLODING:
-            if not self.explosion.active:
-                self.state = self.STATE_DEAD
-                del self.explosion
-
-        if self.state != self.STATE_ALIVE or self.paralised:
-            return
-
-        if not self.path:
-            self.path = self.find_path_to_enemy()
-
-        # if find no path
-        if len(self.path) == 0:
-            return
-
-        new_position = self.path.pop(0)
-
-        # move
-        if self.direction == self.DIR_UP:
-            if new_position[1] < 0:
-                self.path = self.find_path_to_enemy()
-                return
-        elif self.direction == self.DIR_RIGHT:
-            if new_position[0] > (416 - 26):
-                self.path = self.find_path_to_enemy()
-                return
-        elif self.direction == self.DIR_DOWN:
-            if new_position[1] > (416 - 26):
-                self.path = self.find_path_to_enemy()
-                return
-        elif self.direction == self.DIR_LEFT:
-            if new_position[0] < 0:
-                self.path = self.find_path_to_enemy()
-                return
-
-        new_rect = pygame.Rect((new_position[0], new_position[1]), [26, 26])
-
-        # check collisions
-        if self.collide(new_rect):
-            self.path = self.find_path_to_enemy()
-            return
-
-        # collisions with bonuses
-        for bonus in self.bonuses:
-            if new_rect.colliderect(bonus.rect):
-                self.bonus = bonus
-
-        # if no collision, move robot
-        self.rotate(new_position[2])
-        self.rect.topleft = new_rect.topleft
-
-        # bullet
-        if self.in_line_with_bullet(self.rect)[0] > -1:
-            print("bullet warning")
-            self.path = self.dodge_bullets()
-            return
-
-        direction, enemy = self.should_fire()
-        if direction >= 0 and not self.destroy_castle(direction):
-            if not self.in_line_with_steel(direction, enemy) and not self.in_line_with_bricks(direction, enemy):
-                print("should fire")
-                self.rotate(direction, True)
-                self.fire()
-                self.path = self.find_path_to_enemy()
-
     def auto3(self):
         if self.state == self.STATE_EXPLODING:
             if not self.explosion.active:
@@ -661,9 +255,10 @@ class Robot(tanks.Player):
                     return
 
             new_position = self.path.pop(0)
+            new_rect = pygame.Rect((new_position[0], new_position[1]), (26, 26))
             print("try escape, dir is {0}".format(new_position[2]))
 
-            if new_position[0] < 0 or new_position[0] > (416 - 26) or new_position[1] < 0 or new_position[1] > (416 - 26) or self.collide(pygame.Rect((new_position[0], new_position[1]), (26, 26))):
+            if new_rect.left < 0 or new_rect.right > 416 or new_rect.top < 0 or new_rect.bottom > 416 or self.collide(pygame.Rect((new_position[0], new_position[1]), (26, 26))):
                 # if new position is invalid or collide with tiles, tanks and bullets, try another path
                 self.path = self.escape(target_bullet)
                 return
@@ -699,15 +294,14 @@ class Robot(tanks.Player):
                 return
             else:
                 new_position = self.path.pop(0)
-
-                if new_position[0] < 0 or new_position[0] > (416 - 26) or new_position[1] < 0 or new_position[1] > (416 - 26) or self.collide(pygame.Rect((new_position[0], new_position[1]), (26, 26))):
-                    # if new position is invalid or collide with tiles, tanks and bullets, try another path
+                new_rect = pygame.Rect((new_position[0], new_position[1]), (26, 26))
+                if new_rect.left < 0 or new_rect.right > 416 or new_rect.top < 0 or new_rect.bottom > 416 or self.collide(new_rect) or self.in_line_with_bullet(new_rect)[0] > -1:
+                    # if new position is invalid, or collide with tiles, tanks and bullets, or bullet warning
+                    # try another path
                     self.path = self.find_path_to_enemy()
                     return
                 else:
                     # if new position is valid, move to new position
-                    new_rect = pygame.Rect((new_position[0], new_position[1]), (26, 26))
-
                     for bonus in self.bonuses:
                         # if new rect collide with bonuses
                         if new_rect.colliderect(bonus.rect):
@@ -947,6 +541,13 @@ class Gameloader:
 
         # if False, players won't be able to do anything
         self.active = True
+
+        # if True, Ai robot is active and battle automatically
+        self.auto_active = True
+
+        # if True, the status of enemies will show on screen
+        self.show_status = False
+        self.show_circle = 500
 
         del self.players[:]
         del self.bullets[:]
@@ -1539,6 +1140,7 @@ class Gameloader:
 
         self.level.enemies_left = [0] * enemies_l[0] + [1] * enemies_l[1] + [2] * enemies_l[2] + [3] * enemies_l[3]
         random.shuffle(self.level.enemies_left)
+        self.level.enemies_left = self.level.enemies_left[0: len(self.level.enemies_left)/2]
 
         if self.play_sounds:
             self.sounds["start"].play()
@@ -1551,6 +1153,8 @@ class Gameloader:
         self.game_over = False
         self.running = True
         self.active = True
+        self.show_status = False
+        self.show_circle = 500
 
         self.draw()
 
@@ -1574,9 +1178,15 @@ class Gameloader:
                             pygame.mixer.stop()
                         else:
                             self.sounds["bg"].play(-1)
+                    # active AI robot or shut down
+                    elif event.key == pygame.K_p:
+                        self.auto_active = not self.auto_active
+                    # show enemies status
+                    elif event.key == pygame.K_o:
+                        self.show_status = True
 
                     for player in self.players:
-                        if player.state == player.STATE_ALIVE:
+                        if player.state == player.STATE_ALIVE and self.auto_active is False:
                             try:
                                 index = player.controls.index(event.key)
                             except:
@@ -1611,22 +1221,24 @@ class Gameloader:
                                     player.pressed[3] = False
 
             for player in self.players:
-                if player.state == player.STATE_ALIVE and not self.game_over and self.active:
-                    if player.pressed[0]:
-                        player.move(self.DIR_UP)
-                        player.path = []
-                    elif player.pressed[1]:
-                        player.move(self.DIR_RIGHT)
-                        player.path = []
-                    elif player.pressed[2]:
-                        player.move(self.DIR_DOWN)
-                        player.path = []
-                    elif player.pressed[3]:
-                        player.move(self.DIR_LEFT)
-                        player.path = []
-                # player.update(time_passed)
-                player.ai_update(time_passed)
-
+                if player.state == player.STATE_ALIVE and not self.game_over:
+                    if self.auto_active is False:
+                        if player.pressed[0]:
+                            player.move(self.DIR_UP)
+                            player.path = []
+                        elif player.pressed[1]:
+                            player.move(self.DIR_RIGHT)
+                            player.path = []
+                        elif player.pressed[2]:
+                            player.move(self.DIR_DOWN)
+                            player.path = []
+                        elif player.pressed[3]:
+                            player.move(self.DIR_LEFT)
+                            player.path = []
+                if self.auto_active:
+                    player.ai_update(time_passed)
+                else:
+                    player.update(time_passed)
             for enemy in self.enemies:
                 if enemy.state == enemy.STATE_DEAD and not self.game_over and self.active:
                     self.enemies.remove(enemy)
@@ -1634,9 +1246,19 @@ class Gameloader:
                         self.finishLevel()
                 else:
                     enemy.update(time_passed)
-                    # shihang add
-                    detail = tanks.Label(enemy.rect.topleft, "Enemy", 1)
-                    self.labels.append(detail)
+
+                    if self.show_status is True:
+                        if self.show_circle > 0:
+                            show_x = tanks.Label((enemy.rect.left, enemy.rect.bottom), "X:{0}".format(enemy.rect.centerx), 1)
+                            show_y = tanks.Label((enemy.rect.left, enemy.rect.bottom+13), "Y:{0}".format(enemy.rect.centery), 1)
+                            show_health = tanks.Label((enemy.rect.left, enemy.rect.bottom+26), "HEALTH:{0}".format(enemy.health), 1)
+                            self.labels.append(show_x)
+                            self.labels.append(show_y)
+                            self.labels.append(show_health)
+                            self.show_circle -= 1
+                        else:
+                            self.show_status = False
+                            self.show_circle = 500
 
             if not self.game_over and self.active:
                 for player in self.players:

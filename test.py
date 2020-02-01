@@ -1,6 +1,5 @@
 import random
 
 
-li = [1, 2, 3, 4, 5]
-random.shuffle(li)
-print(li)
+info = "X:{0}\nY:{1}\nHEALTH:{2}".format(1, 2, 3)
+print(info)
