@@ -47,7 +47,7 @@ class Robot(tanks.Player):
         self.start_position = position
         self.start_direction = direction
 
-        self.lives = 3
+        self.lives = 99
 
         # total score
         self.score = 0
@@ -167,6 +167,101 @@ class Robot(tanks.Player):
             x, y = x_temp, y_temp
         return path
 
+    def track_target(self, target):
+        '''
+        find path to specific target by BFS
+        :return:[(x, y, direction)]
+        '''
+        del self.path[:]
+
+        x = self.rect.left
+        y = self.rect.top
+
+        unit = 16
+        rows = 416 / unit
+
+        visit = [[0 for i in range(rows)] for j in range(rows)]
+        pre = [[(-1, -1) for i in range(rows)] for j in range(rows)]
+
+        fix_x = int(round(x / unit))
+        fix_y = int(round(y / unit))
+
+        visit[fix_x][fix_y] = 1
+        pre[fix_x][fix_y] = (fix_x, fix_y)
+        queue = deque()
+        queue.append((fix_x, fix_y))
+
+        move = ((0, -1), (1, 0), (0, 1), (-1, 0))
+
+        meet_target = False
+
+        # bfs
+        while len(queue) and not meet_target:
+            current = queue.popleft()
+            for m in move:
+                fix_x = current[0] + m[0]
+                fix_y = current[1] + m[1]
+                new_rect = pygame.Rect((fix_x * unit+3, fix_y * unit+3), [26, 26])
+
+                # if visited
+                if visit[fix_x][fix_y]:
+                    continue
+
+                # detect border
+                if fix_x * unit+3 < 0 or fix_x * unit+3 > (416 - 26) or fix_y * unit+3 < 0 or fix_y * unit+3 > (416 - 26):
+                    continue
+
+                # collisions with tiles
+                if new_rect.collidelist(self.level.obstacle_rects) != -1:
+                    continue
+
+                # collisions with players
+                for player in self.players:
+                    if player != self and player.state == player.STATE_ALIVE and new_rect.colliderect(
+                            player.rect) != -1:
+                        continue
+
+                # collisions with target
+                if new_rect.colliderect(target.rect):
+                    meet_target = True
+
+                visit[fix_x][fix_y] = 1
+                pre[fix_x][fix_y] = current
+                queue.append((fix_x, fix_y))
+
+        path_matrix = list()
+        m, n = fix_x, fix_y
+        while pre[m][n] != (m, n):
+            path_matrix.append((m, n))
+            m, n = pre[m][n]
+        path_matrix.reverse()
+        if len(path_matrix) > 0:
+            path_matrix.pop(-1)
+
+        path = list()
+
+        for p in path_matrix:
+            # 3 = bullet.width/2
+            x_temp, y_temp = p[0] * unit + 3, p[1] * unit + 3
+            if x_temp > x:
+                gap = x_temp - x
+                for px in range(0, gap, self.speed):
+                    path.append((x + px, y, self.DIR_RIGHT))
+            if x_temp < x:
+                gap = x - x_temp
+                for px in range(0, gap, self.speed):
+                    path.append((x - px, y, self.DIR_LEFT))
+            if y_temp > y:
+                gap = y_temp - y
+                for px in range(0, gap, self.speed):
+                    path.append((x, y + px, self.DIR_DOWN))
+            if y_temp < y:
+                gap = y - y_temp
+                for px in range(0, gap, self.speed):
+                    path.append((x, y - px, self.DIR_UP))
+            x, y = x_temp, y_temp
+        return path
+
     def manhattan_distance(self, pos1, pos2):
         return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
@@ -224,7 +319,12 @@ class Robot(tanks.Player):
                         path.append((self.rect.left, self.rect.top+px, self.DIR_DOWN))
         return path
 
-    def auto3(self):
+    def auto(self):
+        '''
+        search enemies by BFS, random find and shoot
+        :return:
+        '''
+
         if self.state == self.STATE_EXPLODING:
             if not self.explosion.active:
                 self.state = self.STATE_DEAD
@@ -310,6 +410,57 @@ class Robot(tanks.Player):
                     self.rotate(new_position[2], True)
                     self.rect.topleft = new_rect.topleft
             return
+
+    def auto2(self):
+        '''
+        if one of the enemy is closer to the castle than to the player, player will track it
+        :return:
+        '''
+        if self.state == self.STATE_EXPLODING:
+            if not self.explosion.active:
+                self.state = self.STATE_DEAD
+                del self.explosion
+
+        if self.state != self.STATE_ALIVE or self.paralised:
+            return
+
+        # if should fire
+        fire_direction, enemy = self.should_fire()
+        if fire_direction >= 0 and not self.destroy_castle(fire_direction):
+            # if not self.in_line_with_steel(fire_direction, enemy) and not self.in_line_with_bricks(fire_direction, enemy):
+            if not self.in_line_with_steel(fire_direction, enemy):
+                self.rotate(fire_direction, True)
+                self.fire()
+
+        # sort enemies
+        enemies = self.enemies
+        sorted_enemy_to_castle = sorted(enemies, key=lambda e: self.manhattan_distance(self.castle.rect.center, e.rect.center))
+
+        if len(self.path) == 0:
+            self.path = self.track_target(sorted_enemy_to_castle[0])
+            if len(self.path) > 50:
+                self.path = self.path[0: 50]
+
+        if len(self.path) == 0:
+            # if find no path
+            return
+        else:
+            new_position = self.path.pop(0)
+            new_rect = pygame.Rect((new_position[0], new_position[1]), (26, 26))
+            if new_rect.left < 0 or new_rect.right > 416 or new_rect.top < 0 or new_rect.bottom > 416 or self.collide(new_rect) or self.in_line_with_bullet(new_rect)[0] > -1:
+                # if new position is invalid, or collide with tiles, tanks and bullets, or bullet warning
+                del self.path[:]
+                return
+            else:
+                # if new position is valid, move to new position
+                for bonus in self.bonuses:
+                    # if new rect collide with bonuses
+                    if new_rect.colliderect(bonus.rect):
+                        self.bonus = bonus
+
+                self.rotate(new_position[2], True)
+                self.rect.topleft = new_rect.topleft
+        return
 
     def in_line_with_enemy(self):
         '''
@@ -471,7 +622,7 @@ class Robot(tanks.Player):
     def ai_update(self, time_passed):
         tanks.Tank.update(self, time_passed)
         if self.state == self.STATE_ALIVE and not self.paralised and len(self.enemies):
-            self.auto3()
+            self.auto2()
 
 
 class Gameloader:
@@ -565,7 +716,7 @@ class Gameloader:
         del self.gtimer.timers[:]
 
         # set current stage to 0
-        self.stage = 1
+        self.stage = 0
 
         self.animateIntroScreen()
 
@@ -974,6 +1125,7 @@ class Gameloader:
 
         for player in self.players:
             player.level = self.level
+            player.lives = 99
             self.respawnPlayer(player, True)
 
     def spawnEnemy(self):
