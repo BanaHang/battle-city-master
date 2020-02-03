@@ -330,12 +330,16 @@ class Robot(tanks.Player):
                 self.state = self.STATE_DEAD
                 del self.explosion
 
-        if self.state != self.STATE_ALIVE or self.paralised:
+        if self.state != self.STATE_ALIVE:
             return
 
         bullet_warning = self.in_line_with_bullet(self.rect)
 
         if bullet_warning[0] > -1:
+
+            if self.paralised:
+                return
+
             print("try escape, dir is {0}".format(bullet_warning[0]))
             # if a bullet will shoot player, try escape
             target_bullet = bullet_warning[1]
@@ -385,6 +389,9 @@ class Robot(tanks.Player):
                     self.rotate(fire_direction, True)
                     self.fire()
 
+            if self.paralised:
+                return
+
             # if no path to move, try find path to reach enemy
             if len(self.path) == 0:
                 self.path = self.find_path_to_enemy()
@@ -421,7 +428,7 @@ class Robot(tanks.Player):
                 self.state = self.STATE_DEAD
                 del self.explosion
 
-        if self.state != self.STATE_ALIVE or self.paralised:
+        if self.state != self.STATE_ALIVE:
             return
 
         # if should fire
@@ -431,6 +438,10 @@ class Robot(tanks.Player):
             if not self.in_line_with_steel(fire_direction, enemy):
                 self.rotate(fire_direction, True)
                 self.fire()
+
+        # paralised can shoot, but can not move.
+        if self.paralised:
+            return
 
         # sort enemies
         enemies = self.enemies
@@ -720,9 +731,20 @@ class Gameloader:
 
         self.animateIntroScreen()
 
+        # tick is to control animation of the instruction
+        main_tick = 0
+        interior_tick = 310
+
         main_loop = True
         while main_loop:
-            time_passed = self.clock.tick(50)
+            time_passed = self.clock.tick(20)
+
+            main_tick += 1
+            tick_temp = main_tick % 10
+            if tick_temp > 5:
+                interior_tick = 310 + tick_temp - 5
+            else:
+                interior_tick = 310 - (5 - tick_temp)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -733,13 +755,14 @@ class Gameloader:
                     elif event.key == pygame.K_UP:
                         if self.nr_of_players == 2:
                             self.nr_of_players = 1
-                            self.drawIntroScreen()
+                            self.drawIntroScreen(tick=interior_tick)
                     elif event.key == pygame.K_DOWN:
                         if self.nr_of_players == 1:
                             self.nr_of_players = 2
-                            self.drawIntroScreen()
+                            self.drawIntroScreen(tick=interior_tick)
                     elif event.key == pygame.K_RETURN:
                         main_loop = False
+            self.drawIntroScreen(tick=interior_tick)
 
         del self.players[:]
         self.nextLevel()
@@ -1015,7 +1038,7 @@ class Gameloader:
             self.screen.blit(surf_letter, [abs_x, abs_y])
             abs_x += letter_w + 16
 
-    def drawIntroScreen(self, put_on_surface=True):
+    def drawIntroScreen(self, put_on_surface=True, tick=310):
         """
             Draw intro (menu) screen
             @param boolean put_on_surface If True, flip display after drawing
@@ -1030,6 +1053,13 @@ class Gameloader:
 
             self.screen.blit(self.font.render("1 PLAYER", True, pygame.Color('white')), [165, 250])
             self.screen.blit(self.font.render("2 PLAYERS", True, pygame.Color('white')), [165, 275])
+
+            # insert instruction
+            insert_word = pygame.font.Font(None, 24)
+            insert_word.set_italic(True)
+            self.screen.blit(
+                insert_word.render("Press P to switch control. Press O to show status.", True, pygame.Color(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))),
+                [50, tick])
 
             self.screen.blit(self.font.render("(c) 1980 1985 NAMCO LTD.", True, pygame.Color('white')), [50, 350])
             self.screen.blit(self.font.render("ALL RIGHTS RESERVED", True, pygame.Color('white')), [85, 380])
