@@ -88,7 +88,7 @@ class Robot(tanks.Player):
         else:
             self.rotate(direction, False)
 
-        self.path = list()
+        self.operations = list()
 
     def find_path_to_enemy(self, target):
         '''
@@ -96,28 +96,67 @@ class Robot(tanks.Player):
         :return: dir
         '''
 
-        top, left = self.rect.top, self.rect.left
-        target_top, target_left = target.rect.top, target.rect.left
+        left, top = self.rect.left, self.rect.top
+        target_pos = (target.rect.left, target.rect.top)
 
         open_list = PriorityQueue()
-        close_list = []
+        came_from = {}
+        close_list = {}
 
-        open_list.put(0, (top, left))
+        # init start
+        start = (left, top)
+        open_list.put(0, start)
+        came_from[start] = None
+        close_list[start] = 0 + self.manhattan_distance(start, target_pos)
+        current = start
 
         while not open_list.isEmpty():
-            current = open_list.get()
-            cur_top, cur_left = current[1]
+            current = open_list.get()[1]
 
-            temp_rect = pygame.Rect(cur_top, cur_left, 26, 26)
-            if self.bingo(temp_rect, target):
+            # if reach target, break
+            temp_rect = pygame.Rect(current[0], current[1], 26, 26)
+            if self.bingo(temp_rect, target.rect):
                 break
 
             # try neighbours
             for neighbour in self.find_neighbour(temp_rect, self.speed, target):
-                # cost = manhattan_distance((target_top, target_left), pos_now) + euclidean_distance((top, left), pos_now)
+                new_cost = self.manhattan_distance(start, neighbour) + self.manhattan_distance(neighbour, target_pos)
 
+                # if not visited or move cost less, add new step
+                if neighbour not in close_list.keys() or new_cost < close_list[current]:
+                    close_list[neighbour] = new_cost
+                    open_list.put(new_cost, neighbour)
+                    came_from[neighbour] = current
 
-        return path
+        # return move operation
+        next_step = None
+        move_operation = -1
+
+        while current != start:
+            next_step = current
+            current = came_from[current]
+
+        if next_step:
+            next_step_left = next_step[0]
+            next_step_top = next_step[1]
+
+            current_left = current[0]
+            current_top = current[1]
+
+            # up
+            if next_step_top < current_top:
+                move_operation = 0
+            # down
+            elif next_step_top > current_top:
+                move_operation = 1
+            # left
+            elif next_step_left < current_left:
+                move_operation = 2
+            # right
+            elif next_step_left > current_left:
+                move_operation = 3
+
+        return move_operation
 
     def find_neighbour(self, rect, speed, target):
         neighbours = []
@@ -156,6 +195,9 @@ class Robot(tanks.Player):
                     neighbours.append((new_left, new_top))
 
         return neighbours
+
+    def manhattan_distance(self, pos1, pos2):
+        return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
     def euclidean_distance(self, pos1, pos2):
         return math.sqrt((pos1[0] - pos2[0])**2 + (pos1[1] - pos2[1])**2)
@@ -242,90 +284,22 @@ class Robot(tanks.Player):
         if self.state != self.STATE_ALIVE:
             return
 
-        bullet_warning = self.in_line_with_bullet(self.rect)
+        direction = -1
+        shoot = 0
 
-        if bullet_warning[0] > -1:
+        if len(self.enemies) > 0:
+            enemy_to_castle = sorted(self.enemies, key=lambda x: self.manhattan_distance(x.rect.center, self.castle.rect.center))
+            enemy_to_player = sorted(self.enemies, key=lambda x: self.manhattan_distance(x.rect.center, self.rect.center))
 
-            if self.paralised:
-                return
+            target = enemy_to_castle[0]
 
-            print("try escape, dir is {0}".format(bullet_warning[0]))
-            # if a bullet will shoot player, try escape
-            target_bullet = bullet_warning[1]
-            escape_path = self.escape(target_bullet)
-
-            if len(escape_path) > 0:
-                # if find escape path
-                self.path = escape_path
+            if self.manhattan_distance(target.rect.center, self.rect.center) <= 200:
+                direction = self.find_path_to_enemy(target)
             else:
-                print("try escape, failed")
-                # if no path to move, try find path to reach enemy
-                if len(self.path) == 0:
-                    self.path = self.find_path_to_enemy()
+                target = enemy_to_player[0]
+                direction = self.find_path_to_enemy(target)
 
-                if len(self.path) == 0:
-                    # if find no path
-                    return
-
-            new_position = self.path.pop(0)
-            new_rect = pygame.Rect((new_position[0], new_position[1]), (26, 26))
-            print("try escape, dir is {0}".format(new_position[2]))
-
-            if new_rect.left < 0 or new_rect.right > 416 or new_rect.top < 0 or new_rect.bottom > 416 or self.collide(pygame.Rect((new_position[0], new_position[1]), (26, 26))):
-                # if new position is invalid or collide with tiles, tanks and bullets, try another path
-                self.path = self.escape(target_bullet)
-                return
-            else:
-                # if new position is valid, move to new position
-                new_rect = pygame.Rect((new_position[0], new_position[1]), (26, 26))
-
-                for bonus in self.bonuses:
-                    # if new rect collide with bonuses
-                    if new_rect.colliderect(bonus.rect):
-                        self.bonus = bonus
-
-                self.rotate(new_position[2])
-                self.rect.topleft = new_rect.topleft
-            return
-        else:
-            # if safe
-
-            # if should fire
-            fire_direction, enemy = self.should_fire()
-            if fire_direction >= 0 and not self.destroy_castle(fire_direction):
-                if not self.in_line_with_steel(fire_direction, enemy) and not self.in_line_with_bricks(fire_direction, enemy):
-                    print("should fire, dir is {0}".format(fire_direction))
-                    self.rotate(fire_direction, True)
-                    self.fire()
-
-            if self.paralised:
-                return
-
-            # if no path to move, try find path to reach enemy
-            if len(self.path) == 0:
-                self.path = self.find_path_to_enemy()
-
-            if len(self.path) == 0:
-                # if find no path
-                return
-            else:
-                new_position = self.path.pop(0)
-                new_rect = pygame.Rect((new_position[0], new_position[1]), (26, 26))
-                if new_rect.left < 0 or new_rect.right > 416 or new_rect.top < 0 or new_rect.bottom > 416 or self.collide(new_rect) or self.in_line_with_bullet(new_rect)[0] > -1:
-                    # if new position is invalid, or collide with tiles, tanks and bullets, or bullet warning
-                    # try another path
-                    self.path = self.find_path_to_enemy()
-                    return
-                else:
-                    # if new position is valid, move to new position
-                    for bonus in self.bonuses:
-                        # if new rect collide with bonuses
-                        if new_rect.colliderect(bonus.rect):
-                            self.bonus = bonus
-
-                    self.rotate(new_position[2], True)
-                    self.rect.topleft = new_rect.topleft
-            return
+        return direction, shoot
 
     def auto2(self):
         '''
@@ -542,7 +516,7 @@ class Robot(tanks.Player):
     def ai_update(self, time_passed):
         tanks.Tank.update(self, time_passed)
         if self.state == self.STATE_ALIVE and not self.paralised and len(self.enemies):
-            self.auto2()
+            self.auto()
 
 
 class Gameloader:
@@ -1294,6 +1268,7 @@ class Gameloader:
                                     player.pressed[2] = True
                                 elif index == 4:
                                     player.pressed[3] = True
+
                 elif event.type == pygame.KEYUP and not self.game_over and self.active:
                     for player in self.players:
                         if player.state == player.STATE_ALIVE:
@@ -1313,23 +1288,30 @@ class Gameloader:
 
             for player in self.players:
                 if player.state == player.STATE_ALIVE and not self.game_over:
-                    if self.auto_active is False:
+                    if not self.auto_active:
                         if player.pressed[0]:
                             player.move(self.DIR_UP)
-                            player.path = []
                         elif player.pressed[1]:
                             player.move(self.DIR_RIGHT)
-                            player.path = []
                         elif player.pressed[2]:
                             player.move(self.DIR_DOWN)
-                            player.path = []
                         elif player.pressed[3]:
                             player.move(self.DIR_LEFT)
-                            player.path = []
-                if self.auto_active:
-                    player.ai_update(time_passed)
-                else:
-                    player.update(time_passed)
+                    else:
+                        dir, shoot = player.auto()
+                        print("dir, shoot = ".format(dir, shoot))
+                        if shoot == 1:
+                            if player.fire() and self.play_sounds:
+                                self.sounds["fire"].play()
+                        if dir == 0:
+                            player.move(self.DIR_UP)
+                        elif dir == 1:
+                            player.move(self.DIR_DOWN)
+                        elif dir == 2:
+                            player.move(self.DIR_LEFT)
+                        elif dir == 3:
+                            player.move(self.DIR_RIGHT)
+                player.update(time_passed)
             for enemy in self.enemies:
                 if enemy.state == enemy.STATE_DEAD and not self.game_over and self.active:
                     self.enemies.remove(enemy)
