@@ -4,6 +4,7 @@
     <list default="true" id="8b35a1dc-c789-4e10-bd92-92e72d0b0da8" name="Default" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/myscript4.py" beforeDir="false" afterPath="$PROJECT_DIR$/myscript4.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/test.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -15,9 +16,9 @@
   <component name="CoverageDataManager">
     <SUITE FILE_PATH="coverage/battle_city_master$myscript3.coverage" NAME="myscript3 Coverage Results" MODIFIED="1582959977140" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/battle_city_master$myscript2.coverage" NAME="myscript2 Coverage Results" MODIFIED="1579505817624" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/battle_city_master$myscript4.coverage" NAME="myscript4 Coverage Results" MODIFIED="1583137432418" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/battle_city_master$test__1_.coverage" NAME="test (1) Coverage Results" MODIFIED="1580544652759" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/battle_city_master$myscript4.coverage" NAME="myscript4 Coverage Results" MODIFIED="1583220272073" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/battle_city_master$tanks.coverage" NAME="tanks Coverage Results" MODIFIED="1583137167144" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/battle_city_master$test__1_.coverage" NAME="test (1) Coverage Results" MODIFIED="1583217631159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/battle_city_master$samplecollector.coverage" NAME="samplecollector Coverage Results" MODIFIED="1579329704473" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/battle_city_master$test.coverage" NAME="test Coverage Results" MODIFIED="1579591135450" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/battle_city_master$myscript.coverage" NAME="myscript Coverage Results" MODIFIED="1578897436358" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
@@ -41,8 +42,8 @@
       <file leaf-file-name="tanks.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/tanks.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1210">
-              <caret line="619" lean-forward="true" selection-start-line="619" selection-end-line="619" />
+            <state relative-caret-position="2700">
+              <caret line="619" selection-start-line="619" selection-end-line="619" />
               <folding>
                 <element signature="e#106#258#0" />
                 <element signature="e#282#1105#0" />
@@ -128,53 +129,79 @@
           </provider>
         </entry>
       </file>
+      <file leaf-file-name="myscript3.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/myscript3.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="127">
+              <caret line="149" column="26" selection-start-line="149" selection-start-column="20" selection-end-line="149" selection-end-column="26" />
+              <folding>
+                <element signature="e#0#12#0" expanded="true" />
+                <element signature="e#99#1107#0" />
+                <element signature="e#1281#2509#0" />
+                <element signature="e#5581#8633#0" />
+                <element signature="e#8689#8743#0" />
+                <element signature="e#8782#9320#0" />
+                <element signature="e#9360#11363#0" />
+                <element signature="e#11393#15373#0" />
+                <element signature="e#24713#55766#0" />
+                <element signature="e#24915#27311#0" />
+                <element signature="e#27345#28937#0" />
+                <element signature="e#28977#29593#0" />
+                <element signature="e#29627#29963#0" />
+                <element signature="e#30000#30449#0" />
+                <element signature="e#30495#30763#0" />
+                <element signature="e#30799#36111#0" />
+                <element signature="e#36149#36412#0" />
+                <element signature="e#36462#38502#0" />
+                <element signature="e#38574#40101#0" />
+                <element signature="e#40145#40744#0" />
+                <element signature="e#40818#41354#0" />
+                <element signature="e#41421#41719#0" />
+                <element signature="e#41758#42961#0" />
+                <element signature="e#42997#43471#0" />
+                <element signature="e#43508#44943#0" />
+                <element signature="e#44973#45808#0" />
+                <element signature="e#45864#46001#0" />
+                <element signature="e#46054#47156#0" />
+                <element signature="e#47193#47514#0" />
+                <element signature="e#47549#55766#0" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
       <file leaf-file-name="myscript4.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/myscript4.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="191">
-              <caret line="1301" column="63" selection-start-line="1301" selection-start-column="63" selection-end-line="1301" selection-end-column="63" />
+            <state relative-caret-position="149">
+              <caret line="394" column="32" selection-start-line="394" selection-start-column="32" selection-end-line="394" selection-end-column="32" />
               <folding>
                 <element signature="e#0#12#0" expanded="true" />
-                <element signature="e#124#1132#0" />
-                <element signature="e#1160#1413#0" />
-                <element signature="e#1587#2815#0" />
-                <element signature="e#2867#4952#0" />
-                <element signature="e#3729#4844#0" />
-                <element signature="e#4932#4986#0" />
-                <element signature="e#4900#4965#0" />
-                <element signature="e#5004#5508#0" />
-                <element signature="e#5553#5908#0" />
-                <element signature="e#5948#7951#0" />
-                <element signature="e#11992#14193#0" />
-                <element signature="e#14237#15072#0" />
-                <element signature="e#15109#16208#0" />
-                <element signature="e#16270#17352#0" />
-                <element signature="e#17415#18497#0" />
-                <element signature="e#18548#19553#0" />
-                <element signature="e#19604#21078#0" />
-                <element signature="e#21126#21275#0" />
-                <element signature="e#21503#23899#0" />
-                <element signature="e#23933#25525#0" />
-                <element signature="e#25565#26181#0" />
-                <element signature="e#26215#26551#0" />
-                <element signature="e#26588#27037#0" />
-                <element signature="e#27083#27351#0" />
-                <element signature="e#27387#32699#0" />
-                <element signature="e#32737#33000#0" />
-                <element signature="e#33050#35090#0" />
-                <element signature="e#35162#36689#0" />
-                <element signature="e#36733#37332#0" />
-                <element signature="e#37406#37942#0" />
-                <element signature="e#38009#38307#0" />
-                <element signature="e#38346#39549#0" />
-                <element signature="e#39585#40059#0" />
-                <element signature="e#40096#41531#0" />
-                <element signature="e#41561#42396#0" />
-                <element signature="e#42452#42589#0" />
-                <element signature="e#42642#43744#0" />
-                <element signature="e#43781#44102#0" />
-                <element signature="e#52389#52846#0" />
+                <element signature="e#123#1131#0" />
+                <element signature="e#1159#1412#0" />
+                <element signature="e#1586#2814#0" />
+                <element signature="e#2866#4934#0" />
+                <element signature="e#4995#6110#0" />
+                <element signature="e#6380#6884#0" />
+                <element signature="e#6929#7284#0" />
+                <element signature="e#7324#9327#0" />
+                <element signature="e#10739#11574#0" />
+                <element signature="e#11611#12710#0" />
+                <element signature="e#12772#13854#0" />
+                <element signature="e#13917#14999#0" />
+                <element signature="e#15050#16055#0" />
+                <element signature="e#16106#17580#0" />
+                <element signature="e#17628#17776#0" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="test.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/test.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="75">
+              <caret line="3" column="10" selection-start-line="3" selection-start-column="10" selection-end-line="3" selection-end-column="10" />
             </state>
           </provider>
         </entry>
@@ -222,9 +249,9 @@
         <option value="$PROJECT_DIR$/myscript2.py" />
         <option value="$PROJECT_DIR$/.hiscore" />
         <option value="$PROJECT_DIR$/tanks.py" />
-        <option value="$PROJECT_DIR$/test.py" />
         <option value="$PROJECT_DIR$/myscript3.py" />
         <option value="$PROJECT_DIR$/Readme.md" />
+        <option value="$PROJECT_DIR$/test.py" />
         <option value="$PROJECT_DIR$/myscript4.py" />
       </list>
     </option>
@@ -249,6 +276,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -260,7 +288,6 @@
           <select />
         </subPane>
       </pane>
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -268,7 +295,7 @@
     <property name="last_opened_file_path" value="F:/Git/bin" />
     <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
     <property name="nodejs_npm_path_reset_for_default_project" value="true" />
-    <property name="settings.editor.selected.configurable" value="settings.github" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
@@ -393,9 +420,9 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.myscript4" />
+        <item itemvalue="Python.test (1)" />
         <item itemvalue="Python.tanks" />
         <item itemvalue="Python.myscript3" />
-        <item itemvalue="Python.test (1)" />
         <item itemvalue="Python.test" />
       </list>
     </recent_temporary>
@@ -509,7 +536,14 @@
       <option name="project" value="LOCAL" />
       <updated>1583049083504</updated>
     </task>
-    <option name="localTasksCounter" value="15" />
+    <task id="LOCAL-00015" summary="commit">
+      <created>1583137476083</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1583137476083</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="TodoView">
@@ -532,7 +566,7 @@
       <window_info anchor="bottom" id="Python Console" order="7" weight="0.21983472" />
       <window_info anchor="bottom" id="Run" order="2" weight="0.4264463" />
       <window_info anchor="bottom" id="Terminal" order="7" weight="0.3272727" />
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.26172465" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.27760968" />
       <window_info anchor="bottom" id="Docker" order="7" show_stripe_button="false" />
       <window_info anchor="right" id="Database" order="4" weight="0.32980332" />
       <window_info anchor="right" id="SciView" order="3" weight="0.32980332" />
@@ -569,11 +603,12 @@
     <MESSAGE value="Write readme." />
     <MESSAGE value="Add animation of instruction at intro screen.&#10;Add readme." />
     <MESSAGE value="Add myscript4.py. Want to find path by A star algorithm." />
-    <option name="LAST_COMMIT_MESSAGE" value="Add myscript4.py. Want to find path by A star algorithm." />
+    <MESSAGE value="commit" />
+    <option name="LAST_COMMIT_MESSAGE" value="commit" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <option name="time" value="64" />
+      <option name="time" value="67" />
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
@@ -2274,13 +2309,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/test.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="75">
-          <caret line="3" column="48" selection-start-line="3" selection-start-column="48" selection-end-line="3" selection-end-column="48" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://F:/Python2.7/Lib/heapq.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="235">
@@ -2288,25 +2316,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/myscript3.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="269">
-          <caret line="264" column="4" selection-start-line="264" selection-start-column="4" selection-end-line="265" selection-end-column="62" />
-          <folding>
-            <element signature="e#0#12#0" expanded="true" />
-            <element signature="e#99#1107#0" />
-            <element signature="e#1281#2509#0" />
-            <element signature="e#2553#5535#0" />
-            <element signature="e#5581#8633#0" />
-            <element signature="e#8782#9320#0" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/tanks.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1210">
-          <caret line="619" lean-forward="true" selection-start-line="619" selection-end-line="619" />
+        <state relative-caret-position="2700">
+          <caret line="619" selection-start-line="619" selection-end-line="619" />
           <folding>
             <element signature="e#106#258#0" />
             <element signature="e#282#1105#0" />
@@ -2391,51 +2404,73 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/myscript4.py">
+    <entry file="file://$PROJECT_DIR$/test.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="191">
-          <caret line="1301" column="63" selection-start-line="1301" selection-start-column="63" selection-end-line="1301" selection-end-column="63" />
+        <state relative-caret-position="75">
+          <caret line="3" column="10" selection-start-line="3" selection-start-column="10" selection-end-line="3" selection-end-column="10" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/myscript3.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="127">
+          <caret line="149" column="26" selection-start-line="149" selection-start-column="20" selection-end-line="149" selection-end-column="26" />
           <folding>
             <element signature="e#0#12#0" expanded="true" />
-            <element signature="e#124#1132#0" />
-            <element signature="e#1160#1413#0" />
-            <element signature="e#1587#2815#0" />
-            <element signature="e#2867#4952#0" />
-            <element signature="e#3729#4844#0" />
-            <element signature="e#4932#4986#0" />
-            <element signature="e#4900#4965#0" />
-            <element signature="e#5004#5508#0" />
-            <element signature="e#5553#5908#0" />
-            <element signature="e#5948#7951#0" />
-            <element signature="e#11992#14193#0" />
-            <element signature="e#14237#15072#0" />
-            <element signature="e#15109#16208#0" />
-            <element signature="e#16270#17352#0" />
-            <element signature="e#17415#18497#0" />
-            <element signature="e#18548#19553#0" />
-            <element signature="e#19604#21078#0" />
-            <element signature="e#21126#21275#0" />
-            <element signature="e#21503#23899#0" />
-            <element signature="e#23933#25525#0" />
-            <element signature="e#25565#26181#0" />
-            <element signature="e#26215#26551#0" />
-            <element signature="e#26588#27037#0" />
-            <element signature="e#27083#27351#0" />
-            <element signature="e#27387#32699#0" />
-            <element signature="e#32737#33000#0" />
-            <element signature="e#33050#35090#0" />
-            <element signature="e#35162#36689#0" />
-            <element signature="e#36733#37332#0" />
-            <element signature="e#37406#37942#0" />
-            <element signature="e#38009#38307#0" />
-            <element signature="e#38346#39549#0" />
-            <element signature="e#39585#40059#0" />
-            <element signature="e#40096#41531#0" />
-            <element signature="e#41561#42396#0" />
-            <element signature="e#42452#42589#0" />
-            <element signature="e#42642#43744#0" />
-            <element signature="e#43781#44102#0" />
-            <element signature="e#52389#52846#0" />
+            <element signature="e#99#1107#0" />
+            <element signature="e#1281#2509#0" />
+            <element signature="e#5581#8633#0" />
+            <element signature="e#8689#8743#0" />
+            <element signature="e#8782#9320#0" />
+            <element signature="e#9360#11363#0" />
+            <element signature="e#11393#15373#0" />
+            <element signature="e#24713#55766#0" />
+            <element signature="e#24915#27311#0" />
+            <element signature="e#27345#28937#0" />
+            <element signature="e#28977#29593#0" />
+            <element signature="e#29627#29963#0" />
+            <element signature="e#30000#30449#0" />
+            <element signature="e#30495#30763#0" />
+            <element signature="e#30799#36111#0" />
+            <element signature="e#36149#36412#0" />
+            <element signature="e#36462#38502#0" />
+            <element signature="e#38574#40101#0" />
+            <element signature="e#40145#40744#0" />
+            <element signature="e#40818#41354#0" />
+            <element signature="e#41421#41719#0" />
+            <element signature="e#41758#42961#0" />
+            <element signature="e#42997#43471#0" />
+            <element signature="e#43508#44943#0" />
+            <element signature="e#44973#45808#0" />
+            <element signature="e#45864#46001#0" />
+            <element signature="e#46054#47156#0" />
+            <element signature="e#47193#47514#0" />
+            <element signature="e#47549#55766#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/myscript4.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="149">
+          <caret line="394" column="32" selection-start-line="394" selection-start-column="32" selection-end-line="394" selection-end-column="32" />
+          <folding>
+            <element signature="e#0#12#0" expanded="true" />
+            <element signature="e#123#1131#0" />
+            <element signature="e#1159#1412#0" />
+            <element signature="e#1586#2814#0" />
+            <element signature="e#2866#4934#0" />
+            <element signature="e#4995#6110#0" />
+            <element signature="e#6380#6884#0" />
+            <element signature="e#6929#7284#0" />
+            <element signature="e#7324#9327#0" />
+            <element signature="e#10739#11574#0" />
+            <element signature="e#11611#12710#0" />
+            <element signature="e#12772#13854#0" />
+            <element signature="e#13917#14999#0" />
+            <element signature="e#15050#16055#0" />
+            <element signature="e#16106#17580#0" />
+            <element signature="e#17628#17776#0" />
           </folding>
         </state>
       </provider>
