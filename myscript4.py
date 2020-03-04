@@ -206,11 +206,11 @@ class Robot(tanks.Player):
                 break
 
             # try neighbours
-            for neighbour in self.find_neighbour(temp_rect, unit, target):
+            for neighbour in self.find_neighbour(temp_rect, unit):
                 new_cost = self.manhattan_distance(start, neighbour) + self.manhattan_distance(neighbour, target_pos)
 
                 # if not visited or move cost less, add new step
-                if neighbour not in close_list.keys() or new_cost < close_list[current]:
+                if neighbour not in close_list.keys() or new_cost < close_list[neighbour]:
                     close_list[neighbour] = new_cost
                     open_list.put(new_cost, neighbour)
                     came_from[neighbour] = current
@@ -247,7 +247,7 @@ class Robot(tanks.Player):
 
         return path[0:5]
 
-    def find_neighbour(self, rect, step, target):
+    def find_neighbour(self, rect, step):
         neighbours = []
 
         for i in range(4):
@@ -269,18 +269,9 @@ class Robot(tanks.Player):
                 new_top = rect.top
                 new_left = rect.left + step
 
-            if 0 <= new_top <= (416 - 26) and 0 <= new_left <= (416 - 26):
-                new_rect = pygame.Rect(new_left, new_top, 26, 26)
-                move = True
-
-                if self.collide(new_rect):
-                    move = False
-
-                if target is not None:
-                    if new_rect.colliderect(target):
-                        move_up = True
-
-                if move:
+            if 0 <= new_left+3 <= (416 - 26) and 0 <= new_top+3 <= (416 - 26):
+                new_rect = pygame.Rect(new_left+3, new_top+3, 26, 26)
+                if new_rect.collidelist(self.level.obstacle_rects) < 0:
                     neighbours.append((new_left, new_top))
 
         return neighbours
@@ -382,7 +373,7 @@ class Robot(tanks.Player):
 
                 target = enemy_to_castle[0]
 
-                if self.manhattan_distance(target.rect.center, self.rect.center) > 200:
+                if self.manhattan_distance(target.rect.center, self.castle.rect) > 200:
                     target = enemy_to_player[0]
 
                 self.path = self.find_path_to_enemy_2(target)
@@ -392,14 +383,27 @@ class Robot(tanks.Player):
             return
 
         new_position = self.path.pop(0)
-        print("new_position = {0}".format(new_position))
         new_rect = pygame.Rect((new_position[0], new_position[1]), (26, 26))
 
+        # if new position collide with enemy, return
+        for e in self.enemies:
+            if new_rect.colliderect(e.rect):
+                del self.path[:]
+                return
+
+        # if new position collide with another player, return
+        for p in self.players:
+            if new_rect.colliderect(p.rect) and p != self:
+                del self.path[:]
+                return
+
+        # if collide with bonus, trigger bonus
         for bonus in self.bonuses:
             # if new rect collide with bonuses
             if new_rect.colliderect(bonus.rect):
                 self.bonus = bonus
 
+        print("new_position = {0}".format(new_position))
         self.rotate(new_position[2], True)
         self.rect.topleft = new_rect.topleft
 
