@@ -342,6 +342,8 @@ class Robot(tanks.Player):
 
         if len(self.path) == 0:
             # if find no path
+            print("no path")
+            print("enemy location {0}".format(sorted_enemy_to_castle[0].rect.center))
             return
         else:
             new_position = self.path.pop(0)
@@ -1223,7 +1225,8 @@ class Gameloader:
         else:
             enemies_l = levels_enemies[34]
 
-        self.level.enemies_left = [0] * enemies_l[0] + [1] * enemies_l[1] + [2] * enemies_l[2] + [3] * enemies_l[3]
+        # self.level.enemies_left = [0] * enemies_l[0] + [1] * enemies_l[1] + [2] * enemies_l[2] + [3] * enemies_l[3]
+        self.level.enemies_left = [0] * 10
         random.shuffle(self.level.enemies_left)
         self.level.enemies_left = self.level.enemies_left[0: len(self.level.enemies_left)/2]
 
