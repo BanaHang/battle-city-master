@@ -119,7 +119,9 @@ class Robot(tanks.Player):
                     continue
 
                 # collisions with tiles
-                if new_rect.collidelist(self.level.obstacle_rects) != -1:
+                collide_tile_index = new_rect.collidelist(self.level.obstacle_rects)
+                if collide_tile_index == -1 or self.level.obstacle_rects[collide_tile_index].type == self.level.TILE_STEEL \
+                        or self.level.obstacle_rects[collide_tile_index].type == self.level.TILE_WATER:
                     continue
 
                 # collisions with players
@@ -212,8 +214,16 @@ class Robot(tanks.Player):
                     continue
 
                 # collisions with tiles
-                if new_rect.collidelist(self.level.obstacle_rects) != -1:
-                    continue
+                collide_tile = new_rect.collidelistall(self.level.mapr)
+                if len(collide_tile) > 0:
+                    collied = False
+                    for tile_index in collide_tile:
+                        tile = self.level.mapr[tile_index].type
+                        if tile in (self.level.TILE_STEEL, self.level.TILE_WATER):
+                            collied = True
+                            break
+                    if collied:
+                        continue
 
                 # collisions with players
                 for player in self.players:
@@ -337,8 +347,8 @@ class Robot(tanks.Player):
 
         if len(self.path) == 0:
             self.path = self.track_target(sorted_enemy_to_castle[0])
-            if len(self.path) > 50:
-                self.path = self.path[0: 50]
+            if len(self.path) > 20:
+                self.path = self.path[0: 20]
 
         if len(self.path) == 0:
             # if find no path
@@ -352,11 +362,13 @@ class Robot(tanks.Player):
                 # if new position is invalid, or collide with tiles, tanks and bullets, or bullet warning
                 del self.path[:]
                 return
-
+            print(1)
             if new_rect.collidelist(self.level.obstacle_rects) > -1:
+                self.rotate(new_position[2], True)
+                self.fire()
                 del self.path[:]
                 return
-
+            print(2)
             for e in self.enemies:
                 if new_rect.colliderect(e.rect):
                     del self.path[:]
@@ -376,6 +388,7 @@ class Robot(tanks.Player):
             print("new_position = {0}".format(new_position))
             self.rotate(new_position[2], True)
             self.rect.topleft = new_rect.topleft
+
         return
 
     def in_line_with_enemy(self):
@@ -537,7 +550,7 @@ class Robot(tanks.Player):
 
     def ai_update(self, time_passed):
         tanks.Tank.update(self, time_passed)
-        if self.state == self.STATE_ALIVE and not self.paralised and len(self.enemies):
+        if len(self.enemies) > 0:
             self.auto()
 
 

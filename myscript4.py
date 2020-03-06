@@ -145,7 +145,7 @@ class Robot(tanks.Player):
                     path.append(next_step[0], next_step[1], self.DIR_DOWN)
 
         path.reverse()
-        return path[0:5]
+        return path
 
     def find_path_to_enemy_2(self, target):
         '''
@@ -245,7 +245,7 @@ class Robot(tanks.Player):
                     path.append((current[0]+3, current[1]+i+3, self.DIR_DOWN))
             current = block
 
-        return path[0:5]
+        return path
 
     def find_neighbour(self, rect, step):
         neighbours = []
@@ -278,22 +278,6 @@ class Robot(tanks.Player):
 
     def manhattan_distance(self, pos1, pos2):
         return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
-
-    def euclidean_distance(self, pos1, pos2):
-        return math.sqrt((pos1[0] - pos2[0])**2 + (pos1[1] - pos2[1])**2)
-
-    def collide(self, rect):
-        '''
-        judge if rect is collide with obstacles, bullets or tanks
-        :param rect: pygame.Rect
-        :return:bool
-        '''
-        if rect.collidelist(self.level.obstacle_rects) == -1 and rect.collidelist(self.enemies) == -1 and rect.collidelist(self.bullets) == -1:
-            for player in self.players:
-                if rect.colliderect(player.rect) and self != player and player.state == player.STATE_ALIVE:
-                    return True
-            return False
-        return True
 
     def bingo(self, rect1, rect2):
         '''
@@ -352,10 +336,9 @@ class Robot(tanks.Player):
 
     def auto(self):
         '''
-        state transfer
+        if one of the enemy is closer to the castle than to the player, player will track it
         :return:
         '''
-
         if self.state == self.STATE_EXPLODING:
             if not self.explosion.active:
                 self.state = self.STATE_DEAD
@@ -364,48 +347,64 @@ class Robot(tanks.Player):
         if self.state != self.STATE_ALIVE:
             return
 
-        shoot = 0
+        # if should fire
+        fire_direction, enemy = self.should_fire()
+        if fire_direction >= 0 and not self.destroy_castle(fire_direction):
+            # if not self.in_line_with_steel(fire_direction, enemy) and not self.in_line_with_bricks(fire_direction, enemy):
+            if not self.in_line_with_steel(fire_direction, enemy):
+                self.rotate(fire_direction, True)
+                self.fire()
+
+        # paralised can shoot, but can not move.
+        if self.paralised:
+            return
+
+        # sort enemies
+        enemies = self.enemies
+        sorted_enemy_to_castle = sorted(enemies, key=lambda e: self.manhattan_distance(self.castle.rect.center, e.rect.center))
 
         if len(self.path) == 0:
-            if len(self.enemies) > 0:
-                enemy_to_castle = sorted(self.enemies, key=lambda x: self.manhattan_distance(x.rect.center, self.castle.rect.center))
-                enemy_to_player = sorted(self.enemies, key=lambda x: self.manhattan_distance(x.rect.center, self.rect.center))
-
-                target = enemy_to_castle[0]
-
-                if self.manhattan_distance(target.rect.center, self.castle.rect) > 200:
-                    target = enemy_to_player[0]
-
-                self.path = self.find_path_to_enemy_2(target)
+            self.path = self.find_path_to_enemy_2(sorted_enemy_to_castle[0])
+            if len(self.path) > 10:
+                self.path = self.path[0: 10]
 
         if len(self.path) == 0:
             # if find no path
+            print("no path")
+            print("enemy location {0}".format(sorted_enemy_to_castle[0].rect.center))
             return
-
-        new_position = self.path.pop(0)
-        new_rect = pygame.Rect((new_position[0], new_position[1]), (26, 26))
-
-        # if new position collide with enemy, return
-        for e in self.enemies:
-            if new_rect.colliderect(e.rect):
+        else:
+            new_position = self.path.pop(0)
+            new_rect = pygame.Rect((new_position[0], new_position[1]), (26, 26))
+            if new_rect.left < 0 or new_rect.right > 416 or new_rect.top < 0 or new_rect.bottom > 416:
+                # if new position is invalid, or collide with tiles, tanks and bullets, or bullet warning
                 del self.path[:]
                 return
 
-        # if new position collide with another player, return
-        for p in self.players:
-            if new_rect.colliderect(p.rect) and p != self:
+            if new_rect.collidelist(self.level.obstacle_rects) > -1:
                 del self.path[:]
                 return
 
-        # if collide with bonus, trigger bonus
-        for bonus in self.bonuses:
-            # if new rect collide with bonuses
-            if new_rect.colliderect(bonus.rect):
-                self.bonus = bonus
+            for e in self.enemies:
+                if new_rect.colliderect(e.rect):
+                    del self.path[:]
+                    return
 
-        print("new_position = {0}".format(new_position))
-        self.rotate(new_position[2], True)
-        self.rect.topleft = new_rect.topleft
+            for p in self.players:
+                if new_rect.colliderect(p.rect) and p != self:
+                    del self.path[:]
+                    return
+
+            # if new position is valid, move to new position
+            for bonus in self.bonuses:
+                # if new rect collide with bonuses
+                if new_rect.colliderect(bonus.rect):
+                    self.bonus = bonus
+
+            print("new_position = {0}".format(new_position))
+            self.rotate(new_position[2], True)
+            self.rect.topleft = new_rect.topleft
+        return
 
     def in_line_with_enemy(self):
         '''
@@ -566,7 +565,7 @@ class Robot(tanks.Player):
 
     def ai_update(self, time_passed):
         tanks.Tank.update(self, time_passed)
-        if self.state == self.STATE_ALIVE and not self.paralised and len(self.enemies):
+        if len(self.enemies) > 0:
             self.auto()
 
 
