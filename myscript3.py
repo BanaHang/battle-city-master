@@ -3,6 +3,7 @@ import pygame
 import random
 import os
 from Queue import deque
+import heapq
 
 
 def tanks_init():
@@ -28,6 +29,20 @@ def tanks_init():
     tanks.sounds["explosion"] = pygame.mixer.Sound("sounds/explosion.ogg")
     tanks.sounds["brick"] = pygame.mixer.Sound("sounds/brick.ogg")
     tanks.sounds["steel"] = pygame.mixer.Sound("sounds/steel.ogg")
+
+
+class PriorityQueue:
+    def __init__(self):
+        self.items = []
+
+    def isEmpty(self):
+        return len(self.items) == 0
+
+    def put(self, priority, item):
+        heapq.heappush(self.items, (priority, item))
+
+    def get(self):
+        return heapq.heappop(self.items)
 
 
 class Robot(tanks.Player):
@@ -74,105 +89,10 @@ class Robot(tanks.Player):
 
         self.path = list()
 
-    def find_path_to_enemy(self):
-        '''
-        find path to enemy by BFS
-        :return:[(x, y, direction)]
-        '''
-        del self.path[:]
-
-        x = self.rect.left
-        y = self.rect.top
-
-        unit = 16
-        rows = 416 / unit
-
-        visit = [[0 for i in range(rows)] for j in range(rows)]
-        pre = [[(-1, -1) for i in range(rows)] for j in range(rows)]
-
-        fix_x = int(round(x / unit))
-        fix_y = int(round(y / unit))
-
-        visit[fix_x][fix_y] = 1
-        pre[fix_x][fix_y] = (fix_x, fix_y)
-        queue = deque()
-        queue.append((fix_x, fix_y))
-
-        move = ((0, -1), (1, 0), (0, 1), (-1, 0))
-
-        meet_enemy = False
-
-        # bfs
-        while len(queue) and not meet_enemy:
-            current = queue.popleft()
-            for m in move:
-                fix_x = current[0] + m[0]
-                fix_y = current[1] + m[1]
-                new_rect = pygame.Rect((fix_x * unit+3, fix_y * unit+3), [26, 26])
-
-                # if visited
-                if visit[fix_x][fix_y]:
-                    continue
-
-                # detect border
-                if fix_x * unit+3 < 0 or fix_x * unit+3 > (416 - 26) or fix_y * unit+3 < 0 or fix_y * unit+3 > (416 - 26):
-                    continue
-
-                # collisions with tiles
-                collide_tile_index = new_rect.collidelist(self.level.obstacle_rects)
-                if collide_tile_index == -1 or self.level.obstacle_rects[collide_tile_index].type == self.level.TILE_STEEL \
-                        or self.level.obstacle_rects[collide_tile_index].type == self.level.TILE_WATER:
-                    continue
-
-                # collisions with players
-                for player in self.players:
-                    if player != self and player.state == player.STATE_ALIVE and new_rect.colliderect(
-                            player.rect) != -1:
-                        continue
-
-                # collisions with enemies
-                if new_rect.collidelist(self.enemies) != -1:
-                    meet_enemy = True
-
-                visit[fix_x][fix_y] = 1
-                pre[fix_x][fix_y] = current
-                queue.append((fix_x, fix_y))
-
-        path_matrix = list()
-        m, n = fix_x, fix_y
-        while pre[m][n] != (m, n):
-            path_matrix.append((m, n))
-            m, n = pre[m][n]
-        path_matrix.reverse()
-
-        path = list()
-
-        for p in path_matrix:
-            # 3 = bullet.width/2
-            x_temp, y_temp = p[0] * unit + 3, p[1] * unit + 3
-            if x_temp > x:
-                gap = x_temp - x
-                for px in range(0, gap, self.speed):
-                    path.append((x + px, y, self.DIR_RIGHT))
-            if x_temp < x:
-                gap = x - x_temp
-                for px in range(0, gap, self.speed):
-                    path.append((x - px, y, self.DIR_LEFT))
-            if y_temp > y:
-                gap = y_temp - y
-                for px in range(0, gap, self.speed):
-                    path.append((x, y + px, self.DIR_DOWN))
-            if y_temp < y:
-                gap = y - y_temp
-                for px in range(0, gap, self.speed):
-                    path.append((x, y - px, self.DIR_UP))
-            x, y = x_temp, y_temp
-        return path
-
     def track_target(self, target):
         '''
         find path to specific target by BFS
-        :return:[(x, y, direction)]
+        :return:[(x, y, direction),]
         '''
         del self.path[:]
 
@@ -227,12 +147,13 @@ class Robot(tanks.Player):
 
                 # collisions with players
                 for player in self.players:
-                    if player != self and player.state == player.STATE_ALIVE and new_rect.colliderect(
-                            player.rect) != -1:
+                    if player != self and player.state == player.STATE_ALIVE and new_rect.colliderect(player.rect) != -1:
                         continue
 
                 # collisions with target
-                if new_rect.colliderect(target.rect):
+                # if new_rect.colliderect(target.rect):
+                #     meet_target = True
+                if self.reach_target(new_rect, target.rect):
                     meet_target = True
 
                 visit[fix_x][fix_y] = 1
@@ -271,6 +192,133 @@ class Robot(tanks.Player):
                     path.append((x, y - px, self.DIR_UP))
             x, y = x_temp, y_temp
         return path
+
+    def track_target_2(self, target):
+        '''
+        find path to specific target by A star
+        :return:[(x, y, direction),]
+        '''
+        path = list()
+        left, top = self.rect.left, self.rect.top
+        target_pos = (target.rect.left, target.rect.top)
+
+        unit = 16
+        rows = 416 / unit
+
+        # fix start position
+        fix_left = int(round(left / unit))
+        fix_top = int(round(top / unit))
+
+        temp_x, temp_y = left, top
+        if fix_left + 3 < temp_x:
+            gap = temp_x - (fix_left + 3)
+            for i in range(0, gap, self.speed):
+                path.append((temp_x - i, temp_y, self.DIR_LEFT))
+            temp_x = fix_left + 3
+        if fix_left + 3 > temp_x:
+            gap = (fix_left + 3) - temp_x
+            for i in range(0, gap, self.speed):
+                path.append((temp_x + i, temp_y, self.DIR_RIGHT))
+            temp_x = fix_left + 3
+        if fix_top + 3 < temp_y:
+            gap = temp_y - (fix_top + 3)
+            for i in range(0, gap, self.speed):
+                path.append((temp_x, temp_y - i, self.DIR_UP))
+            temp_y = fix_top + 3
+        if fix_top + 3 > temp_y:
+            gap = (fix_top + 3) - temp_y
+            for i in range(0, gap, self.speed):
+                path.append((temp_x, temp_y + i, self.DIR_DOWN))
+            temp_y = fix_top - 3
+
+        # init list
+        open_list = PriorityQueue()
+        came_from = {}
+        close_list = {}
+
+        # init start
+        start = (fix_left, fix_top)
+        open_list.put(0, start)
+        came_from[start] = None
+        close_list[start] = 0 + self.manhattan_distance(start, target_pos)
+        current = start
+
+        while not open_list.isEmpty():
+            current = open_list.get()[1]
+
+            # if reach target, break
+            temp_rect = pygame.Rect(current[0] + 3, current[1] + 3, 26, 26)
+            if self.reach_target(temp_rect, target.rect):
+                break
+
+            # try neighbours
+            for neighbour in self.find_neighbour(temp_rect, unit):
+                new_cost = self.manhattan_distance(start, neighbour) + self.manhattan_distance(neighbour, target_pos)
+
+                # if not visited or move cost less, add new step
+                if neighbour not in close_list.keys() or new_cost < close_list[neighbour]:
+                    close_list[neighbour] = new_cost
+                    open_list.put(new_cost, neighbour)
+                    came_from[neighbour] = current
+
+        # return move operation
+        next_step = None
+        blocks = list()
+        while current != start:
+            next_step = current
+            current = came_from[current]
+            blocks.append((next_step[0], next_step[1]))
+
+        blocks.reverse()
+        current = start
+        for block in blocks:
+            move_dir = -1
+            if block[0] < current[0]:
+                gap = current[0] - block[0]
+                for i in range(0, gap, self.speed):
+                    path.append((current[0] - i + 3, current[1] + 3, self.DIR_LEFT))
+            elif block[0] > current[0]:
+                gap = block[0] - current[0]
+                for i in range(0, gap, self.speed):
+                    path.append((current[0] + i + 3, current[1] + 3, self.DIR_RIGHT))
+            elif block[1] < current[1]:
+                gap = current[1] - block[1]
+                for i in range(0, gap, self.speed):
+                    path.append((current[0] + 3, current[1] - i + 3, self.DIR_UP))
+            elif block[1] > current[1]:
+                gap = block[1] - current[1]
+                for i in range(0, gap, self.speed):
+                    path.append((current[0] + 3, current[1] + i + 3, self.DIR_DOWN))
+            current = block
+
+        return path
+
+    def find_neighbour(self, rect, step):
+        neighbours = []
+        for i in range(4):
+            new_top, new_left = rect.left, rect.top
+            if i == 0:
+                # move up
+                new_top = rect.top - step
+                new_left = rect.left
+            elif i == 1:
+                # move down
+                new_top = rect.top + step
+                new_left = rect.left
+            elif i == 2:
+                # move left
+                new_top = rect.top
+                new_left = rect.left - step
+            elif i == 3:
+                # move right
+                new_top = rect.top
+                new_left = rect.left + step
+
+            if 0 <= new_left + 3 <= (416 - 26) and 0 <= new_top + 3 <= (416 - 26):
+                new_rect = pygame.Rect(new_left + 3, new_top + 3, 26, 26)
+                if new_rect.collidelist(self.level.obstacle_rects) < 0:
+                    neighbours.append((new_left, new_top))
+        return neighbours
 
     def manhattan_distance(self, pos1, pos2):
         return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
@@ -390,6 +438,20 @@ class Robot(tanks.Player):
             self.rect.topleft = new_rect.topleft
 
         return
+
+    def reach_target(self, rect1, rect2):
+        '''
+        # return True if reach target
+        :param rect1:
+        :param rect2:
+        :return: bool
+        '''
+        center_x1, center_y1 = rect1.center
+        center_x2, center_y2 = rect2.center
+        if abs(center_x1 - center_x2) <= 7 and abs(center_y1 - center_y2) <= 7:
+            return True
+        else:
+            return False
 
     def in_line_with_enemy(self):
         '''
@@ -610,7 +672,7 @@ class Gameloader:
         # number of players. here is defined preselected menu value
         self.nr_of_players = 1
 
-        self.stage = 1
+        self.stage = 0
         self.level = None
 
         # if True, start "game over" animation
@@ -643,9 +705,6 @@ class Gameloader:
 
         # clear all timers
         del self.gtimer.timers[:]
-
-        # set current stage to 0
-        self.stage = 0
 
         self.animateIntroScreen()
 
