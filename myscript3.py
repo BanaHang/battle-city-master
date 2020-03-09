@@ -133,7 +133,7 @@ class Robot(tanks.Player):
                 if fix_x * unit+3 < 0 or fix_x * unit+3 > (416 - 26) or fix_y * unit+3 < 0 or fix_y * unit+3 > (416 - 26):
                     continue
 
-                # collisions with tiles
+                # collisions with tiles, except bricks
                 collide_tile = new_rect.collidelistall(self.level.mapr)
                 if len(collide_tile) > 0:
                     collied = False
@@ -253,7 +253,7 @@ class Robot(tanks.Player):
 
             # try neighbours
             for neighbour in self.find_neighbour(temp_rect, unit):
-                new_cost = self.manhattan_distance(start, neighbour) + self.manhattan_distance(neighbour, target_pos)
+                new_cost = close_list[current] + unit + self.manhattan_distance(neighbour, target_pos)
 
                 # if not visited or move cost less, add new step
                 if neighbour not in close_list.keys() or new_cost < close_list[neighbour]:
@@ -293,6 +293,53 @@ class Robot(tanks.Player):
 
         return path
 
+    def fix_position(self):
+        '''
+        fix the position of robot
+        :return: [(x, y, direction),]
+        '''
+
+        path = list()
+        left = self.rect.left
+        top = self.rect.top
+
+        unit = 16
+        rows = 416 / unit
+
+        if left % 16 == 0 and top % 16 == 0:
+            return path
+
+        fix_pos = [(left/16, top/16), ((left+16)/16, top/16), (left/16, (top+16)/16), ((left+16)/16, (top+16)/16)]
+
+        for fp in fix_pos:
+            new_left, new_top = fp[0]*16, fp[1]*16
+            new_rect = pygame.Rect(new_left, new_top, 26, 26)
+            if new_rect.collidelist(self.level.obstacle_rects) > -1:
+                continue
+            else:
+                temp_left, temp_top = left, top
+
+                if temp_left < new_left:
+                    for i in range(temp_left, new_left):
+                        path.append((i, temp_top, self.DIR_RIGHT))
+                    temp_left = new_left
+                elif temp_left > new_left:
+                    for i in range(0, (temp_left-new_left)):
+                        path.append((temp_left-i, temp_top, self.DIR_LEFT))
+                    temp_left = new_left
+
+                if temp_top < new_top:
+                    for i in range(temp_top, new_top):
+                        path.append((temp_left, i, self.DIR_DOWN))
+                    temp_top = new_top
+                elif temp_top > new_top:
+                    for i in range(0, (temp_top-new_top)):
+                        path.append((temp_left, temp_top-i, self.DIR_UP))
+                    temp_top = new_top
+
+                break
+        return path
+
     def find_neighbour(self, rect, step):
         neighbours = []
         for i in range(4):
@@ -316,8 +363,18 @@ class Robot(tanks.Player):
 
             if 0 <= new_left + 3 <= (416 - 26) and 0 <= new_top + 3 <= (416 - 26):
                 new_rect = pygame.Rect(new_left + 3, new_top + 3, 26, 26)
-                if new_rect.collidelist(self.level.obstacle_rects) < 0:
-                    neighbours.append((new_left, new_top))
+
+                # collisions with tiles, except bricks
+                collide_tile = new_rect.collidelistall(self.level.mapr)
+                if len(collide_tile) > 0:
+                    collied = False
+                    for tile_index in collide_tile:
+                        tile = self.level.mapr[tile_index].type
+                        if tile in (self.level.TILE_STEEL, self.level.TILE_WATER):
+                            collied = True
+                            break
+                    if not collied:
+                        neighbours.append((new_left, new_top))
         return neighbours
 
     def manhattan_distance(self, pos1, pos2):
@@ -400,6 +457,7 @@ class Robot(tanks.Player):
 
         if len(self.path) == 0:
             # if find no path
+            self.path = self.fix_position()
             print("no path")
             print("enemy location {0}".format(sorted_enemy_to_castle[0].rect.center))
             return
@@ -410,13 +468,13 @@ class Robot(tanks.Player):
                 # if new position is invalid, or collide with tiles, tanks and bullets, or bullet warning
                 del self.path[:]
                 return
-            print(1)
+
             if new_rect.collidelist(self.level.obstacle_rects) > -1:
                 self.rotate(new_position[2], True)
                 self.fire()
                 del self.path[:]
                 return
-            print(2)
+
             for e in self.enemies:
                 if new_rect.colliderect(e.rect):
                     del self.path[:]
