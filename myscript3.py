@@ -209,6 +209,7 @@ class Robot(tanks.Player):
         fix_left = int(round(left / unit))
         fix_top = int(round(top / unit))
 
+        '''
         temp_x, temp_y = left, top
         if fix_left + 3 < temp_x:
             gap = temp_x - (fix_left + 3)
@@ -230,6 +231,7 @@ class Robot(tanks.Player):
             for i in range(0, gap, self.speed):
                 path.append((temp_x, temp_y + i, self.DIR_DOWN))
             temp_y = fix_top - 3
+        '''
 
         # init list
         open_list = PriorityQueue()
@@ -237,7 +239,7 @@ class Robot(tanks.Player):
         close_list = {}
 
         # init start
-        start = (fix_left, fix_top)
+        start = (fix_left*unit, fix_top*unit)
         open_list.put(0, start)
         came_from[start] = None
         close_list[start] = 0 + self.manhattan_distance(start, target_pos)
@@ -272,7 +274,6 @@ class Robot(tanks.Player):
         blocks.reverse()
         current = start
         for block in blocks:
-            move_dir = -1
             if block[0] < current[0]:
                 gap = current[0] - block[0]
                 for i in range(0, gap, self.speed):
@@ -343,7 +344,7 @@ class Robot(tanks.Player):
     def find_neighbour(self, rect, step):
         neighbours = []
         for i in range(4):
-            new_top, new_left = rect.left, rect.top
+            new_left, new_top = rect.left, rect.top
             if i == 0:
                 # move up
                 new_top = rect.top - step
@@ -366,15 +367,15 @@ class Robot(tanks.Player):
 
                 # collisions with tiles, except bricks
                 collide_tile = new_rect.collidelistall(self.level.mapr)
+                collied = False
                 if len(collide_tile) > 0:
-                    collied = False
                     for tile_index in collide_tile:
                         tile = self.level.mapr[tile_index].type
                         if tile in (self.level.TILE_STEEL, self.level.TILE_WATER):
                             collied = True
                             break
-                    if not collied:
-                        neighbours.append((new_left, new_top))
+                if not collied:
+                    neighbours.append((new_left, new_top))
         return neighbours
 
     def manhattan_distance(self, pos1, pos2):
@@ -436,11 +437,9 @@ class Robot(tanks.Player):
 
         # if should fire
         fire_direction, enemy = self.should_fire()
-        if fire_direction >= 0 and not self.destroy_castle(fire_direction):
-            # if not self.in_line_with_steel(fire_direction, enemy) and not self.in_line_with_bricks(fire_direction, enemy):
-            if not self.in_line_with_steel(fire_direction, enemy):
-                self.rotate(fire_direction, True)
-                self.fire()
+        if fire_direction >= 0 and not self.destroy_castle(fire_direction) and not self.in_line_with_steel(fire_direction, enemy):
+            self.rotate(fire_direction, True)
+            self.fire()
 
         # paralised can shoot, but can not move.
         if self.paralised:
@@ -452,8 +451,9 @@ class Robot(tanks.Player):
 
         if len(self.path) == 0:
             self.path = self.track_target(sorted_enemy_to_castle[0])
+            '''
             if len(self.path) > 20:
-                self.path = self.path[0: 20]
+                self.path = self.path[0: 20]'''
 
         if len(self.path) == 0:
             # if find no path
