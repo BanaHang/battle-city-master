@@ -2081,21 +2081,25 @@ class Game():
 
 			self.draw()
 
+gtimer = Timer()
+
+sprites = None
+screen = None
+players = []
+enemies = []
+bullets = []
+bonuses = []
+labels = []
+
+play_sounds = True
+sounds = {}
+
+game = None
+castle = None
+
+
+
 if __name__ == "__main__":
-
-	gtimer = Timer()
-
-	sprites = None
-	screen = None
-	players = []
-	enemies = []
-	bullets = []
-	bonuses = []
-	labels = []
-
-	play_sounds = True
-	sounds = {}
-
 	game = Game()
 	castle = Castle()
 	game.showMenu()
