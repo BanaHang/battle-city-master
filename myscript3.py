@@ -4,6 +4,7 @@ import random
 import os
 from Queue import deque
 import heapq
+import math
 
 
 def tanks_init():
@@ -87,6 +88,7 @@ class Robot(tanks.Player):
         else:
             self.rotate(direction, False)
 
+        self.lastposition = self.rect.topleft
         self.path = list()
 
     def track_target(self, target):
@@ -300,46 +302,24 @@ class Robot(tanks.Player):
         :return: [(x, y, direction),]
         '''
 
-        path = list()
+        new_position = ()
         left = self.rect.left
         top = self.rect.top
 
         unit = 16
         rows = 416 / unit
 
-        if left % 16 == 0 and top % 16 == 0:
-            return path
+        if (left-3) % 16 == 0 and (top-3) % 16 == 0:
+            return new_position
 
-        fix_pos = [(left/16, top/16), ((left+16)/16, top/16), (left/16, (top+16)/16), ((left+16)/16, (top+16)/16)]
-
+        fix_pos = [(left/unit*unit, top/unit*unit), ((left+unit)/unit*unit, top/unit*unit), (left/unit*unit, (top+unit)/unit*unit), ((left+unit)/unit*unit, (top+unit)/unit*unit)]
+        fix_pos = sorted(fix_pos, key=lambda e: self.euclidean_distance((left, top), e))
         for fp in fix_pos:
-            new_left, new_top = fp[0]*16, fp[1]*16
-            new_rect = pygame.Rect(new_left, new_top, 26, 26)
-            if new_rect.collidelist(self.level.obstacle_rects) > -1:
-                continue
-            else:
-                temp_left, temp_top = left, top
-
-                if temp_left < new_left:
-                    for i in range(temp_left, new_left):
-                        path.append((i, temp_top, self.DIR_RIGHT))
-                    temp_left = new_left
-                elif temp_left > new_left:
-                    for i in range(0, (temp_left-new_left)):
-                        path.append((temp_left-i, temp_top, self.DIR_LEFT))
-                    temp_left = new_left
-
-                if temp_top < new_top:
-                    for i in range(temp_top, new_top):
-                        path.append((temp_left, i, self.DIR_DOWN))
-                    temp_top = new_top
-                elif temp_top > new_top:
-                    for i in range(0, (temp_top-new_top)):
-                        path.append((temp_left, temp_top-i, self.DIR_UP))
-                    temp_top = new_top
-
+            new_rect = pygame.Rect((fp[0]+3, fp[1]+3), (26, 26))
+            if new_rect.collidelist(self.level.obstacle_rects) == -1:
+                new_position = fp
                 break
-        return path
+        return new_position
 
     def find_neighbour(self, rect, step):
         neighbours = []
@@ -380,6 +360,9 @@ class Robot(tanks.Player):
 
     def manhattan_distance(self, pos1, pos2):
         return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
+
+    def euclidean_distance(self, pos1, pos2):
+        return math.sqrt((pos1[0]-pos2[0])**2 + (pos1[1]-pos2[1])**2)
 
     def escape(self, bullet):
         '''
@@ -445,6 +428,16 @@ class Robot(tanks.Player):
         if self.paralised:
             return
 
+        # if current position equals last position, fix position
+        if self.lastposition:
+            if self.lastposition == self.rect.topleft:
+                new_position = self.fix_position()
+                if new_position:
+                    print("new_position is {0}".format(new_position))
+                    new_rect = pygame.Rect(new_position[0]+3, new_position[1]+3, 26, 26)
+                    self.rect.topleft = new_rect.topleft
+                    self.lastposition = self.rect.topleft
+
         # sort enemies
         enemies = self.enemies
         sorted_enemy_to_castle = sorted(enemies, key=lambda e: self.manhattan_distance(self.castle.rect.center, e.rect.center))
@@ -457,9 +450,7 @@ class Robot(tanks.Player):
 
         if len(self.path) == 0:
             # if find no path
-            self.path = self.fix_position()
-            print("no path")
-            print("enemy location {0}".format(sorted_enemy_to_castle[0].rect.center))
+            print("find no path")
             return
         else:
             new_position = self.path.pop(0)
@@ -494,7 +485,7 @@ class Robot(tanks.Player):
             print("new_position = {0}".format(new_position))
             self.rotate(new_position[2], True)
             self.rect.topleft = new_rect.topleft
-
+            self.lastposition = self.rect.topleft
         return
 
     def reach_target(self, rect1, rect2):
@@ -506,7 +497,8 @@ class Robot(tanks.Player):
         '''
         center_x1, center_y1 = rect1.center
         center_x2, center_y2 = rect2.center
-        if abs(center_x1 - center_x2) <= 7 and abs(center_y1 - center_y2) <= 7:
+        #if abs(center_x1 - center_x2) <= 7 and abs(center_y1 - center_y2) <= 7:
+        if abs(center_x1 - center_x2) == 0 and abs(center_y1 - center_y2) == 0:
             return True
         else:
             return False
