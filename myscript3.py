@@ -135,6 +135,11 @@ class Robot(tanks.Player):
                 if fix_x * unit+3 < 0 or fix_x * unit+3 > (416 - 26) or fix_y * unit+3 < 0 or fix_y * unit+3 > (416 - 26):
                     continue
 
+                # if reach castle or fortress
+                castle_fortress = pygame.Rect(11*16, 23*16, 4*16, 3*16)
+                if new_rect.colliderect(castle_fortress):
+                    continue
+
                 # collisions with tiles, except bricks
                 collide_tile = new_rect.collidelistall(self.level.mapr)
                 if len(collide_tile) > 0:
@@ -321,6 +326,41 @@ class Robot(tanks.Player):
                 break
         return new_position
 
+    def random_move(self):
+        path = []
+        start_x, start_y = self.rect.left, self.rect.top
+
+        directios = (self.DIR_DOWN, self.DIR_UP, self.DIR_LEFT, self.DIR_RIGHT)
+
+        while len(path) < 15:
+            move_dir = directios[random.randrange(0, 4)]
+            while move_dir == self.direction:
+                move_dir = directios[random.randrange(0, 4)]
+
+            if move_dir == self.DIR_RIGHT:
+                new_rect = pygame.Rect(start_x + 2, start_y, 26, 26)
+            elif move_dir == self.DIR_LEFT:
+                new_rect = pygame.Rect(start_x - 2, start_y, 26, 26)
+            elif move_dir == self.DIR_UP:
+                new_rect = pygame.Rect(start_x, start_y - 2, 26, 26)
+            elif move_dir == self.DIR_DOWN:
+                new_rect = pygame.Rect(start_x, start_y + 2, 26, 26)
+
+            if new_rect.left < 0 or new_rect.right > 416 or new_rect.top < 0 or new_rect.bottom > 416:
+                continue
+            if new_rect.collidelist(self.level.obstacle_rects) > -1:
+                continue
+            for e in self.enemies:
+                if new_rect.colliderect(e.rect):
+                    continue
+            for p in self.players:
+                if new_rect.colliderect(p.rect):
+                    continue
+
+            start_x, start_y = new_rect.left, new_rect.top
+            path.append((start_x, start_y, move_dir))
+        return path
+
     def find_neighbour(self, rect, step):
         neighbours = []
         for i in range(4):
@@ -344,6 +384,11 @@ class Robot(tanks.Player):
 
             if 0 <= new_left + 3 <= (416 - 26) and 0 <= new_top + 3 <= (416 - 26):
                 new_rect = pygame.Rect(new_left + 3, new_top + 3, 26, 26)
+
+                # if reach castle or fortress
+                castle_fortress = pygame.Rect(11 * 16, 23 * 16, 4 * 16, 3 * 16)
+                if new_rect.colliderect(castle_fortress):
+                    continue
 
                 # collisions with tiles, except bricks
                 collide_tile = new_rect.collidelistall(self.level.mapr)
@@ -431,12 +476,15 @@ class Robot(tanks.Player):
         # if current position equals last position, fix position
         if self.lastposition:
             if self.lastposition == self.rect.topleft:
+                print("fix position")
                 new_position = self.fix_position()
                 if new_position:
                     print("new_position is {0}".format(new_position))
                     new_rect = pygame.Rect(new_position[0]+3, new_position[1]+3, 26, 26)
                     self.rect.topleft = new_rect.topleft
                     self.lastposition = self.rect.topleft
+
+                self.path = self.random_move()
 
         # sort enemies
         enemies = self.enemies
@@ -461,8 +509,9 @@ class Robot(tanks.Player):
                 return
 
             if new_rect.collidelist(self.level.obstacle_rects) > -1:
-                self.rotate(new_position[2], True)
-                self.fire()
+                if not self.destroy_castle(new_position[2]):
+                    self.rotate(new_position[2], True)
+                    self.fire()
                 del self.path[:]
                 return
 
@@ -630,7 +679,7 @@ class Robot(tanks.Player):
 
     def destroy_castle(self, direction):
         '''
-        detect if player will destroy the castle, when fire at the specific direction . if will, return true; else not.
+        detect if player will destroy the castle, when fire at the specific direction . if will, return true; else false.
         :return: bool
         '''
 
@@ -642,22 +691,33 @@ class Robot(tanks.Player):
                 for enemy in self.enemies:
                     if enemy.rect.top <= player_y <= enemy.rect.bottom and player_x < enemy.rect.centerx < self.castle.rect.left:
                         return False
-                    else:
-                        return True
+
+                for obstacle in self.level.mapr:
+                    if obstacle.type == self.level.TILE_BRICK or obstacle.type == self.level.TILE_STEEL:
+                        if obstacle.top <= player_y <= obstacle.bottom and player_x < obstacle.centerx < obstacle.rect.left:
+                            return False
+
         if direction == self.DIR_LEFT:
             if self.castle.rect.top-16-3 <= player_y <= self.castle.rect.bottom:
                 for enemy in self.enemies:
                     if enemy.rect.top <= player_y <= enemy.rect.bottom and self.castle.rect.right < enemy.rect.centerx < player_x:
                         return False
-                    else:
-                        return True
+
+                for obstacle in self.level.mapr:
+                    if obstacle.type == self.level.TILE_BRICK or obstacle.type == self.level.TILE_STEEL:
+                        if obstacle.top <= player_y <= obstacle.bottom and self.castle.rect.right < obstacle.centerx < player_x:
+                            return False
+
         if direction == self.DIR_DOWN:
             if self.castle.rect.left-16-3 <= player_x <= self.castle.rect.right+16+3:
                 for enemy in self.enemies:
                     if enemy.rect.left <= player_x <= enemy.rect.right and player_y < enemy.rect.centery < self.castle.rect.top:
                         return False
-                    else:
-                        return True
+
+                for obstacle in self.level.mapr:
+                    if obstacle.type == self.level.TILE_BRICK or obstacle.type == self.level.TILE_STEEL:
+                        if obstacle.left <= player_x <= obstacle.right and player_y < obstacle.centery < self.castle.rect.top:
+                            return False
         return False
 
     def ai_update(self, time_passed):
@@ -722,7 +782,7 @@ class Gameloader:
         # number of players. here is defined preselected menu value
         self.nr_of_players = 1
 
-        self.stage = 0
+        self.stage = 1
         self.level = None
 
         # if True, start "game over" animation
