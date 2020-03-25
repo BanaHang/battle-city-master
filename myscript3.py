@@ -472,7 +472,7 @@ class Robot(tanks.Player):
         # paralised can shoot, but can not move.
         if self.paralised:
             return
-
+        '''
         # if current position equals last position, fix position
         if self.lastposition:
             if self.lastposition == self.rect.topleft:
@@ -485,7 +485,7 @@ class Robot(tanks.Player):
                     self.lastposition = self.rect.topleft
 
                 self.path = self.random_move()
-
+        '''
         # sort enemies
         enemies = self.enemies
         sorted_enemy_to_castle = sorted(enemies, key=lambda e: self.manhattan_distance(self.castle.rect.center, e.rect.center))
