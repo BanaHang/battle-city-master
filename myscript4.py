@@ -113,7 +113,7 @@ class Robot(tanks.Player):
                 inline_direction = self.inline_with_enemy(target_enemy)
 
                 # perform a star control instruction
-                astar_direction = self.a_star(enemy_rect, 6)
+                astar_direction = self.a_star(target_enemy.rect, self.speed)
 
                 # perform dodge bullet instruction
                 shoot, direction = self.dodge_bullets(self.mapinfo[3][0], 6, self.mapinfo[0], astar_direction, inline_direction)
@@ -124,7 +124,8 @@ class Robot(tanks.Player):
             # go back to start position
             else:
                 # perform a star
-                astar_direction = self.a_star(player_rect, default_pos_rect, 6)
+                birth_rect = pygame.Rect(self.start_position[0], self.start_position[1], 26, 26)
+                astar_direction = self.a_star(birth_rect, self.speed)
 
                 # update strategy
                 if astar_direction is not None:
@@ -155,24 +156,24 @@ class Robot(tanks.Player):
             # enemy on top
             if enemy.rect.bottom <= self.rect.top:
                 print('enemy on top')
-                return 0
+                return self.DIR_UP
             # enemy on bottom
             elif self.rect.bottom <= enemy.rect.top:
                 print('enemy on bottom')
-                return 2
+                return self.DIR_DOWN
         # horizontal inline
         if enemy.rect.top <= self.rect.centery <= enemy.rect.bottom and abs(self.rect.left - enemy.rect.right) <= 151:
             # enemy on left
             if enemy.rect.right <= self.rect.left:
                 print('enemy on left')
-                return 3
+                return self.DIR_LEFT
             # enemy on right
             elif self.rect.right <= enemy.rect.left:
                 print('enemy on right')
-                return 1
+                return self.DIR_RIGHT
         return -1
 
-    def a_star(self, start_rect, goal_rect, speed):
+    def a_star(self, target_rect, speed):
         '''
         track target by A star
         :param start_rect:
@@ -180,6 +181,104 @@ class Robot(tanks.Player):
         :param speed:
         :return:
         '''
+
+        # init list
+        open_list = PriorityQueue()
+        came_from = {}
+        close_list = {}
+
+        # init start
+        start = (self.rect.left, self.rect.top)
+        target_pos = (target_rect.left, target_rect.top)
+        open_list.put(0, start)
+        came_from[start] = None
+        close_list[start] = 0 + self.manhattan_distance(start, target_pos)
+        current = start
+
+        while not open_list.isEmpty():
+            current = open_list.get()[1]
+
+            # if reach target, break
+            temp_rect = pygame.Rect(current[0], current[1], 26, 26)
+            if self.reach_target(temp_rect, target_rect):
+                break
+
+            # try neighbours
+            for neighbour in self.find_neighbour(temp_rect, speed):
+                new_cost = close_list[current] + speed + self.manhattan_distance(neighbour, target_pos)
+
+                # if not visited or move cost less, add new step
+                if neighbour not in close_list.keys() or new_cost < close_list[neighbour]:
+                    close_list[neighbour] = new_cost
+                    open_list.put(new_cost, neighbour)
+                    came_from[neighbour] = current
+
+            # return the first move
+            next = None
+            next_dir = None
+
+            while current != start:
+                next = current
+                current = came_from[current]
+
+            if next:
+                next_left, next_top = next
+                current_left, current_top = current
+                # up
+                if current_top > next_top:
+                    next_dir = self.DIR_UP
+                # down
+                elif current_top < next_top:
+                    next_dir = self.DIR_DOWN
+                # left
+                elif current_left > next_left:
+                    next_dir = self.DIR_LEFT
+                # right
+                elif current_left < next_left:
+                    next_dir = self.DIR_RIGHT
+            return next_dir
+
+    def find_neighbour(self, rect, step):
+        neighbours = []
+        for i in range(4):
+            new_left, new_top = rect.left, rect.top
+            if i == 0:
+                # move up
+                new_top = rect.top - step
+                new_left = rect.left
+            elif i == 1:
+                # move down
+                new_top = rect.top + step
+                new_left = rect.left
+            elif i == 2:
+                # move left
+                new_top = rect.top
+                new_left = rect.left - step
+            elif i == 3:
+                # move right
+                new_top = rect.top
+                new_left = rect.left + step
+
+            if 0 <= new_left <= (416 - 26) and 0 <= new_top <= (416 - 26):
+                new_rect = pygame.Rect(new_left, new_top, 26, 26)
+
+                # if reach castle or fortress
+                castle_fortress = pygame.Rect(11 * 16, 23 * 16, 4 * 16, 3 * 16)
+                if new_rect.colliderect(castle_fortress):
+                    continue
+
+                # collisions with tiles, except bricks
+                collide_tile = new_rect.collidelistall(self.level.mapr)
+                collied = False
+                if len(collide_tile) > 0:
+                    for tile_index in collide_tile:
+                        tile = self.level.mapr[tile_index].type
+                        if tile in (self.level.TILE_STEEL, self.level.TILE_WATER):
+                            collied = True
+                            break
+                if not collied:
+                    neighbours.append((new_left, new_top))
+        return neighbours
 
     def reach_target(self, rect1, rect2):
         '''
@@ -195,17 +294,126 @@ class Robot(tanks.Player):
         else:
             return False
 
-    def dodge_bullets(self, player_info, speed, bullet_info_list, direction_from_astar, inlined_with_enemy):
-        '''
-        dodge bullets
-        :param player_info:
-        :param speed:
-        :param bullet_info_list:
-        :param direction_from_astar:
-        :param inlined_with_enemy:
-        :return:
-        '''
+    def dodge_bullets(self, speed, direction_from_astar, inlined_with_enemy):
+        # possible direction list
+        directions = []
 
+        # sort bullet by euclidean distance to player
+        sorted_bullets = sorted(self.bullets, key=lambda x: self.euclidean_distance(x.rect.center, self.rect.center))
+
+        # default shoot
+        shoot = 0
+
+        if sorted_bullets:
+            min_distance = self.euclidean_distance(sorted_bullets[0].rect.center, self.rect.center)
+        else:
+            min_distance = 99999
+
+        if min_distance < 150:
+            bullet = sorted_bullets[0]
+
+            if abs(self.rect.centerx - bullet.rect.centerx) < 26:
+                # width of bullet is 6
+                if abs(self.rect.centerx - bullet.rect.centerx) < 6:
+                    # bullet direction to up, on player's bottom
+                    # 0 up, 1 right, 2 down ,3 left
+                    if bullet.direction == 0 and bullet.rect.top > self.rect.top:
+                        # add direction to down
+                        directions.append(2)
+                        # shoot
+                        shoot = 1
+                        print('block bullet from down')
+                    # direction to down, on player's top
+                    if bullet.direction == 2 and bullet.rect.top < self.rect.top:
+                        # add direction to up
+                        directions.append(0)
+                        # shoot
+                        shoot = 1
+                        print('block bullet from up')
+                else:
+                    # if bullet on player's right
+                    if bullet.rect.left > self.rect.left:
+                        # go left
+                        directions.append(3)
+                        print('go left, skip bullet')
+                    else:
+                        # go right
+                        directions.append(1)
+                        print('go right, skip bullet')
+            elif abs(self.rect.centery - bullet.rect.centery) < 26:
+                if abs(bullet.rect.centery - self.rect.centery) < 6:
+                    # bullet direction to right, on player's left
+                    if bullet.direction == 1 and bullet.rect.left < self.rect.left:
+                        # go left
+                        directions.append(3)
+                        # shoot
+                        shoot = 1
+                        print('block bullet from left')
+                    # bullet direction to left, on player's right
+                    if bullet.direction == 3 and bullet.rect.left > self.rect.left:
+                        # go right
+                        directions.append(1)
+                        # shoot
+                        shoot = 1
+                        print('block bullet from right')
+            else:
+                if inlined_with_enemy == direction_from_astar:
+                    shoot = 1
+                directions.append(direction_from_astar)
+
+                # remove dangerous move
+                # bullet direction down or up
+                if bullet.direction == 0 or bullet.direction == 2:
+                    # bullet on right hand side
+                    if bullet.rect.left > self.rect.left:
+                        if 1 in directions:
+                            directions.remove(1)
+                    else:
+                        if 3 in directions:
+                            directions.remove(3)
+                # bullet direction to left or right
+                if bullet.direction == 1 or bullet.direction == 3:
+                    # bullet on bottom
+                    if bullet.rect.top > self.rect.top:
+                        if 2 in directions:
+                            directions.remove(2)
+                    else:
+                        if 0 in directions:
+                            directions.remove(0)
+        else:
+            if inlined_with_enemy == direction_from_astar:
+                shoot = 1
+            directions.append(direction_from_astar)
+
+        if directions:
+            for dir in directions:
+                if dir == 0:
+                    new_left = self.rect.left
+                    new_top = self.rect.top - speed
+                elif dir == 1:
+                    new_left = self.rect.left + speed
+                    new_top = self.rect.top
+                elif dir == 2:
+                    new_left = self.rect.left
+                    new_top = self.rect.top + speed
+                elif dir == 3:
+                    new_left = self.rect.left - speed
+                    new_top = self.rect.top
+                else:
+                    new_top = self.rect.top
+                    new_left = self.rect.left
+
+                temp_rect = pygame.Rect(new_left, new_top, 26, 26)
+                if 0 <= new_top <= (416 - 26) and 0 <= new_left <= (416 - 26):
+                    if temp_rect.colliderect(self.level.obstacle_rects):
+                        if inlined_with_enemy == direction_from_astar:
+                            shoot = 1
+                            break
+                    else:
+                        return shoot, direction
+        else:
+            return shoot, 4
+        return shoot, direction_from_astar
 
 class Gameloader:
 
