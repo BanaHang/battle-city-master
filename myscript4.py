@@ -2,6 +2,7 @@ import tanks
 import pygame
 import random
 import os
+import Queue
 from Queue import deque
 import heapq
 import threading
@@ -92,9 +93,9 @@ class Robot(tanks.Player):
             self.rotate(direction, False)
 
         # a set of control instructions
-        self.controls = multiprocessing.Queue
+        self.control_instruction = multiprocessing.Queue()
 
-    def auto(self):
+    def auto(self, args=False):
         while True:
             # sort enemies
             enemies = self.enemies
@@ -116,10 +117,10 @@ class Robot(tanks.Player):
                 astar_direction = self.a_star(target_enemy.rect, self.speed)
 
                 # perform dodge bullet instruction
-                shoot, direction = self.dodge_bullets(self.mapinfo[3][0], 6, self.mapinfo[0], astar_direction, inline_direction)
+                shoot, direction = self.dodge_bullets(self.speed, astar_direction, inline_direction)
 
                 # update strategy
-                self.update_strategy(c_control, shoot, direction)
+                self.update_strategy(shoot, direction)
                 time.sleep(0.005)
             # go back to start position
             else:
@@ -129,11 +130,10 @@ class Robot(tanks.Player):
 
                 # update strategy
                 if astar_direction is not None:
-                    self.update_strategy(c_control, 0, astar_direction)
-                    # time.sleep(0.001)
+                    self.update_strategy(0, astar_direction)
                 else:
-                    self.update_strategy(c_control, 0, 0)
-                    # time.sleep(0.001)
+                    self.update_strategy(0, 0)
+                time.sleep(0.002)
 
     def manhattan_distance(self, pos1, pos2):
         return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
@@ -141,9 +141,9 @@ class Robot(tanks.Player):
     def euclidean_distance(self, pos1, pos2):
         return math.sqrt((pos1[0]-pos2[0])**2 + (pos1[1]-pos2[1])**2)
 
-    def update_strategy(self, control, shoot, move_dir):
-        if self.controls.empty():
-            self.controls.put([shoot, move_dir])
+    def update_strategy(self, shoot, move_dir):
+        if self.control_instruction.empty():
+            self.control_instruction.put([shoot, move_dir])
 
     def should_fire(self):
         for e in self.enemies:
@@ -410,10 +410,11 @@ class Robot(tanks.Player):
                             shoot = 1
                             break
                     else:
-                        return shoot, direction
+                        return shoot, dir
         else:
             return shoot, 4
         return shoot, direction_from_astar
+
 
 class Gameloader:
 
@@ -896,7 +897,7 @@ class Gameloader:
         player.reset()
 
         # clear player path
-        player.path = []
+        player.control_instruction = multiprocessing.Queue()
 
         if clear_scores:
             player.trophies = {
@@ -1117,6 +1118,16 @@ class Gameloader:
 
         self.draw()
 
+        # multiprocess
+        process_list = []
+        for player in self.players:
+            process_list.append(multiprocessing.Process(target=player.auto, args=[False,]))
+
+        for p in process_list:
+            p.start()
+        # control instruction
+        control_instruction = [0, -1]
+
         while self.running:
 
             time_passed = self.clock.tick(50)
@@ -1139,6 +1150,18 @@ class Gameloader:
                             self.sounds["bg"].play(-1)
                     # active AI robot or shut down
                     elif event.key == pygame.K_p:
+                        if self.auto_active:
+                            for p in process_list:
+                                p.terminate()
+                            del process_list[:]
+                            for player in self.players:
+                                player.control_instruction = multiprocessing.Queue()
+                        else:
+                            del process_list[:]
+                            for player in self.players:
+                                process_list.append(multiprocessing.Process(target=player.auto, args=[False, ]))
+                            for p in process_list:
+                                p.start()
                         self.auto_active = not self.auto_active
                     # show enemies status
                     elif event.key == pygame.K_o:
@@ -1182,30 +1205,49 @@ class Gameloader:
             for player in self.players:
                 if player.state == player.STATE_ALIVE and not self.game_over:
                     if self.auto_active is False:
+                        # if AI is not active, control manually
                         if player.pressed[0]:
                             player.move(self.DIR_UP)
-                            player.path = []
                         elif player.pressed[1]:
                             player.move(self.DIR_RIGHT)
-                            player.path = []
                         elif player.pressed[2]:
                             player.move(self.DIR_DOWN)
-                            player.path = []
                         elif player.pressed[3]:
                             player.move(self.DIR_LEFT)
-                            player.path = []
-                if self.auto_active:
-                    player.ai_update(time_passed)
-                else:
-                    player.update(time_passed)
+                    else:
+                        # if AI is active, control automatically
+                        if not player.control_instruction.empty():
+                            try:
+                                player.control_instruction.get()
+                            except Queue.Empty:
+                                print("no instruction")
+                        # fire
+                        if control_instruction[0] == 1:
+                            if player.fire() and self.play_sounds:
+                                self.sounds["fire"].play()
+                        # move
+                        if control_instruction[1] == self.DIR_UP:
+                            player.move(self.DIR_UP)
+                        elif control_instruction[1] == self.DIR_RIGHT:
+                            player.move(self.DIR_RIGHT)
+                        elif control_instruction[1] == self.DIR_DOWN:
+                            player.move(self.DIR_DOWN)
+                        elif control_instruction[1] == self.DIR_LEFT:
+                            player.move(self.DIR_LEFT)
+                player.update(time_passed)
             for enemy in self.enemies:
                 if enemy.state == enemy.STATE_DEAD and not self.game_over and self.active:
                     self.enemies.remove(enemy)
                     if len(self.level.enemies_left) == 0 and len(self.enemies) == 0:
+                        for p in process_list:
+                            p.terminate()
+                        for player in self.players:
+                            player.control_instruction = multiprocessing.Queue()
                         self.finishLevel()
                 else:
                     enemy.update(time_passed)
 
+                    # show enemies status
                     if self.show_status is True:
                         if self.show_circle > 0:
                             show_x = tanks.Label((enemy.rect.left, enemy.rect.bottom), "X:{0}".format(enemy.rect.centerx), 1)
@@ -1228,9 +1270,12 @@ class Gameloader:
                     elif player.state == player.STATE_DEAD:
                         player.superpowers = 0
                         player.lives -= 1
+                        player.control_instruction = multiprocessing.Queue()
                         if player.lives > 0:
                             self.respawnPlayer(player)
                         else:
+                            for p in process_list:
+                                p.terminate()
                             self.gameOver()
 
             for bullet in self.bullets:
@@ -1249,6 +1294,10 @@ class Gameloader:
 
             if not self.game_over:
                 if not self.castle.active:
+                    for p in process_list:
+                        p.terminate()
+                    for player in self.players:
+                        player.control_instruction = multiprocessing.Queue()
                     self.gameOver()
 
             self.gtimer.update(time_passed)
