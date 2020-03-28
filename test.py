@@ -1,4 +1,5 @@
-import multiprocessing
+import threading
+import Queue
 
 
 class myclass:
@@ -6,16 +7,27 @@ class myclass:
         self.name = name
 
     def fun(self, args=False):
-        print("name: {0}, num: {1}".format(self.name, args))
+        while True:
+            print("name: {0}, num: {1}".format(self.name, args))
 
 
 if __name__ == '__main__':
+    '''
     class_list = []
     for i in range(4):
         class_list.append(myclass(name=i))
-    p_list = []
+    thread_list = []
     for mc in class_list:
-        p_list.append(multiprocessing.Process(target=mc.fun, args=[False,]))
+        thread_list.append(threading.Thread(target=mc.fun))
 
-    for p in p_list:
-        p.start()
+    for t in thread_list:
+        t.start()
+    '''
+    q = Queue.Queue()
+    q.put(1)
+    q.put(2)
+    print(q.qsize())
+    q.mutex.acquire()
+    q.queue.clear()
+    q.mutex.release()
+    print(q.qsize())

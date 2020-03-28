@@ -492,9 +492,8 @@ class Robot(tanks.Player):
 
         if len(self.path) == 0:
             self.path = self.track_target(sorted_enemy_to_castle[0])
-            '''
             if len(self.path) > 20:
-                self.path = self.path[0: 20]'''
+                self.path = self.path[0: 20]
 
         if len(self.path) == 0:
             # if find no path
@@ -546,8 +545,7 @@ class Robot(tanks.Player):
         '''
         center_x1, center_y1 = rect1.center
         center_x2, center_y2 = rect2.center
-        #if abs(center_x1 - center_x2) <= 7 and abs(center_y1 - center_y2) <= 7:
-        if abs(center_x1 - center_x2) == 0 and abs(center_y1 - center_y2) == 0:
+        if abs(center_x1 - center_x2) <= 18 and abs(center_y1 - center_y2) <= 18:
             return True
         else:
             return False
@@ -694,7 +692,7 @@ class Robot(tanks.Player):
 
                 for obstacle in self.level.mapr:
                     if obstacle.type == self.level.TILE_BRICK or obstacle.type == self.level.TILE_STEEL:
-                        if obstacle.top <= player_y <= obstacle.bottom and player_x < obstacle.centerx < obstacle.rect.left:
+                        if obstacle.top <= player_y <= obstacle.bottom and player_x < obstacle.centerx < self.castle.rect.left:
                             return False
 
         if direction == self.DIR_LEFT:

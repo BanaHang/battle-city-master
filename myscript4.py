@@ -3,12 +3,10 @@ import pygame
 import random
 import os
 import Queue
-from Queue import deque
 import heapq
-import threading
-import multiprocessing
 import math
 import time
+import threading
 
 
 def tanks_init():
@@ -93,9 +91,10 @@ class Robot(tanks.Player):
             self.rotate(direction, False)
 
         # a set of control instructions
-        self.control_instruction = multiprocessing.Queue()
+        self.control_instruction = Queue.Queue()
 
-    def auto(self, args=False):
+    def auto(self):
+        print("AI robot is running automatically")
         while True:
             # sort enemies
             enemies = self.enemies
@@ -142,7 +141,7 @@ class Robot(tanks.Player):
         return math.sqrt((pos1[0]-pos2[0])**2 + (pos1[1]-pos2[1])**2)
 
     def update_strategy(self, shoot, move_dir):
-        if self.control_instruction.empty():
+        if self.control_instruction.qsize() == 0:
             self.control_instruction.put([shoot, move_dir])
 
     def should_fire(self):
@@ -897,7 +896,10 @@ class Gameloader:
         player.reset()
 
         # clear player path
-        player.control_instruction = multiprocessing.Queue()
+        lock = threading.Lock()
+        lock.acquire()
+        player.control_instruction.queue.clear()
+        lock.release()
 
         if clear_scores:
             player.trophies = {
@@ -1118,13 +1120,16 @@ class Gameloader:
 
         self.draw()
 
-        # multiprocess
-        process_list = []
-        for player in self.players:
-            process_list.append(multiprocessing.Process(target=player.auto, args=[False,]))
+        # multithreads
+        t_list = []
 
-        for p in process_list:
-            p.start()
+        for player in self.players:
+            t = threading.Thread(target=player.auto)
+            t_list.append(t)
+
+        for t in t_list:
+            t.start()
+
         # control instruction
         control_instruction = [0, -1]
 
@@ -1150,18 +1155,6 @@ class Gameloader:
                             self.sounds["bg"].play(-1)
                     # active AI robot or shut down
                     elif event.key == pygame.K_p:
-                        if self.auto_active:
-                            for p in process_list:
-                                p.terminate()
-                            del process_list[:]
-                            for player in self.players:
-                                player.control_instruction = multiprocessing.Queue()
-                        else:
-                            del process_list[:]
-                            for player in self.players:
-                                process_list.append(multiprocessing.Process(target=player.auto, args=[False, ]))
-                            for p in process_list:
-                                p.start()
                         self.auto_active = not self.auto_active
                     # show enemies status
                     elif event.key == pygame.K_o:
@@ -1214,6 +1207,10 @@ class Gameloader:
                             player.move(self.DIR_DOWN)
                         elif player.pressed[3]:
                             player.move(self.DIR_LEFT)
+                        lock = threading.Lock()
+                        lock.acquire()
+                        player.control_instruction.queue.clear()
+                        lock.release()
                     else:
                         # if AI is active, control automatically
                         if not player.control_instruction.empty():
@@ -1222,27 +1219,31 @@ class Gameloader:
                             except Queue.Empty:
                                 print("no instruction")
                         # fire
-                        if control_instruction[0] == 1:
-                            if player.fire() and self.play_sounds:
-                                self.sounds["fire"].play()
-                        # move
-                        if control_instruction[1] == self.DIR_UP:
-                            player.move(self.DIR_UP)
-                        elif control_instruction[1] == self.DIR_RIGHT:
-                            player.move(self.DIR_RIGHT)
-                        elif control_instruction[1] == self.DIR_DOWN:
-                            player.move(self.DIR_DOWN)
-                        elif control_instruction[1] == self.DIR_LEFT:
-                            player.move(self.DIR_LEFT)
+                        if control_instruction:
+                            if control_instruction[0] == 1:
+                                if player.fire() and self.play_sounds:
+                                    self.sounds["fire"].play()
+                            # move
+                            if control_instruction[1] == self.DIR_UP:
+                                player.move(self.DIR_UP)
+                            elif control_instruction[1] == self.DIR_RIGHT:
+                                player.move(self.DIR_RIGHT)
+                            elif control_instruction[1] == self.DIR_DOWN:
+                                player.move(self.DIR_DOWN)
+                            elif control_instruction[1] == self.DIR_LEFT:
+                                player.move(self.DIR_LEFT)
                 player.update(time_passed)
             for enemy in self.enemies:
                 if enemy.state == enemy.STATE_DEAD and not self.game_over and self.active:
                     self.enemies.remove(enemy)
                     if len(self.level.enemies_left) == 0 and len(self.enemies) == 0:
-                        for p in process_list:
-                            p.terminate()
+                        # clear instruction
                         for player in self.players:
-                            player.control_instruction = multiprocessing.Queue()
+                            lock = threading.Lock()
+                            lock.acquire()
+                            player.control_instruction.queue.clear()
+                            lock.release()
+
                         self.finishLevel()
                 else:
                     enemy.update(time_passed)
@@ -1270,12 +1271,16 @@ class Gameloader:
                     elif player.state == player.STATE_DEAD:
                         player.superpowers = 0
                         player.lives -= 1
-                        player.control_instruction = multiprocessing.Queue()
+
+                        # clear instruction
+                        lock = threading.Lock()
+                        lock.acquire()
+                        player.control_instruction.queue.clear()
+                        lock.release()
+
                         if player.lives > 0:
                             self.respawnPlayer(player)
                         else:
-                            for p in process_list:
-                                p.terminate()
                             self.gameOver()
 
             for bullet in self.bullets:
@@ -1294,10 +1299,11 @@ class Gameloader:
 
             if not self.game_over:
                 if not self.castle.active:
-                    for p in process_list:
-                        p.terminate()
                     for player in self.players:
-                        player.control_instruction = multiprocessing.Queue()
+                        lock = threading.Lock()
+                        lock.acquire()
+                        player.control_instruction.queue.clear()
+                        lock.release()
                     self.gameOver()
 
             self.gtimer.update(time_passed)
