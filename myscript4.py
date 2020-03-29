@@ -45,7 +45,7 @@ class PriorityQueue:
         heapq.heappush(self.items, (priority, item))
 
     def get(self):
-        return heapq.heappop(self.items)
+        return heapq.heappop(self.items)[1]
 
 
 class Robot(tanks.Player):
@@ -117,7 +117,7 @@ class Robot(tanks.Player):
 
                 # perform dodge bullet instruction
                 shoot, direction = self.dodge_bullets(self.speed, astar_direction, inline_direction)
-
+                print("this is 1, and shoot is {0}, dir is {1}, a_star is {2}".format(shoot, direction, astar_direction))
                 # update strategy
                 self.update_strategy(shoot, direction)
                 time.sleep(0.005)
@@ -131,7 +131,7 @@ class Robot(tanks.Player):
                 if astar_direction is not None:
                     self.update_strategy(0, astar_direction)
                 else:
-                    self.update_strategy(0, 0)
+                    self.update_strategy(0, -1)
                 time.sleep(0.002)
 
     def manhattan_distance(self, pos1, pos2):
@@ -183,59 +183,60 @@ class Robot(tanks.Player):
 
         # init list
         open_list = PriorityQueue()
-        came_from = {}
-        close_list = {}
+        came_from = dict()
+        close_list = dict()
 
         # init start
         start = (self.rect.left, self.rect.top)
         target_pos = (target_rect.left, target_rect.top)
         open_list.put(0, start)
         came_from[start] = None
-        close_list[start] = 0 + self.manhattan_distance(start, target_pos)
+        close_list[start] = 0
         current = start
 
         while not open_list.isEmpty():
-            current = open_list.get()[1]
+            current_left, current_top = open_list.get()
+            current = (current_left, current_top)
 
             # if reach target, break
-            temp_rect = pygame.Rect(current[0], current[1], 26, 26)
+            temp_rect = pygame.Rect(current_left, current_left, 26, 26)
             if self.reach_target(temp_rect, target_rect):
                 break
 
             # try neighbours
             for neighbour in self.find_neighbour(temp_rect, speed):
-                new_cost = close_list[current] + speed + self.manhattan_distance(neighbour, target_pos)
-
+                new_cost = close_list[current] + speed
                 # if not visited or move cost less, add new step
                 if neighbour not in close_list.keys() or new_cost < close_list[neighbour]:
                     close_list[neighbour] = new_cost
-                    open_list.put(new_cost, neighbour)
+                    priority = new_cost + self.manhattan_distance(neighbour, target_pos)
+                    open_list.put(priority, neighbour)
                     came_from[neighbour] = current
 
-            # return the first move
-            next = None
-            next_dir = None
+        # return the first move
+        next = None
+        next_dir = None
 
-            while current != start:
-                next = current
-                current = came_from[current]
+        while current != start:
+            next = current
+            current = came_from[current]
 
-            if next:
-                next_left, next_top = next
-                current_left, current_top = current
-                # up
-                if current_top > next_top:
-                    next_dir = self.DIR_UP
-                # down
-                elif current_top < next_top:
-                    next_dir = self.DIR_DOWN
-                # left
-                elif current_left > next_left:
-                    next_dir = self.DIR_LEFT
-                # right
-                elif current_left < next_left:
-                    next_dir = self.DIR_RIGHT
-            return next_dir
+        if next:
+            next_left, next_top = next
+            current_left, current_top = current
+            # up
+            if current_top > next_top:
+                next_dir = self.DIR_UP
+            # down
+            elif current_top < next_top:
+                next_dir = self.DIR_DOWN
+            # left
+            elif current_left > next_left:
+                next_dir = self.DIR_LEFT
+            # right
+            elif current_left < next_left:
+                next_dir = self.DIR_RIGHT
+        return next_dir
 
     def find_neighbour(self, rect, step):
         neighbours = []
@@ -288,12 +289,12 @@ class Robot(tanks.Player):
         '''
         center_x1, center_y1 = rect1.center
         center_x2, center_y2 = rect2.center
-        if abs(center_x1 - center_x2) <= 7 and abs(center_y1 - center_y2) <= 7:
+        if abs(center_x1 - center_x2) < 18 and abs(center_y1 - center_y2) < 18:
             return True
         else:
             return False
 
-    def dodge_bullets(self, speed, direction_from_astar, inlined_with_enemy):
+    def dodge_bullets(self, speed, direction_from_astar, inline_with_enemy):
         # possible direction list
         directions = []
 
@@ -321,14 +322,14 @@ class Robot(tanks.Player):
                         directions.append(2)
                         # shoot
                         shoot = 1
-                        print('block bullet from down')
+                        print('bullet from down')
                     # direction to down, on player's top
                     if bullet.direction == 2 and bullet.rect.top < self.rect.top:
                         # add direction to up
                         directions.append(0)
                         # shoot
                         shoot = 1
-                        print('block bullet from up')
+                        print('bullet from up')
                 else:
                     # if bullet on player's right
                     if bullet.rect.left > self.rect.left:
@@ -347,16 +348,16 @@ class Robot(tanks.Player):
                         directions.append(3)
                         # shoot
                         shoot = 1
-                        print('block bullet from left')
+                        print('bullet from left')
                     # bullet direction to left, on player's right
                     if bullet.direction == 3 and bullet.rect.left > self.rect.left:
                         # go right
                         directions.append(1)
                         # shoot
                         shoot = 1
-                        print('block bullet from right')
+                        print('bullet from right')
             else:
-                if inlined_with_enemy == direction_from_astar:
+                if inline_with_enemy == direction_from_astar:
                     shoot = 1
                 directions.append(direction_from_astar)
 
@@ -380,7 +381,7 @@ class Robot(tanks.Player):
                         if 0 in directions:
                             directions.remove(0)
         else:
-            if inlined_with_enemy == direction_from_astar:
+            if inline_with_enemy == direction_from_astar:
                 shoot = 1
             directions.append(direction_from_astar)
 
@@ -404,14 +405,14 @@ class Robot(tanks.Player):
 
                 temp_rect = pygame.Rect(new_left, new_top, 26, 26)
                 if 0 <= new_top <= (416 - 26) and 0 <= new_left <= (416 - 26):
-                    if temp_rect.colliderect(self.level.obstacle_rects):
-                        if inlined_with_enemy == direction_from_astar:
+                    if temp_rect.collidelist(self.level.obstacle_rects) > -1:
+                        if inline_with_enemy == direction_from_astar:
                             shoot = 1
                             break
                     else:
                         return shoot, dir
         else:
-            return shoot, 4
+            return shoot, direction_from_astar
         return shoot, direction_from_astar
 
 
@@ -1215,7 +1216,7 @@ class Gameloader:
                         # if AI is active, control automatically
                         if not player.control_instruction.empty():
                             try:
-                                player.control_instruction.get()
+                                control_instruction = player.control_instruction.get()
                             except Queue.Empty:
                                 print("no instruction")
                         # fire
