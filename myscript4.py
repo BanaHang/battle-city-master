@@ -115,12 +115,19 @@ class Robot(tanks.Player):
                 # perform a star control instruction
                 astar_direction = self.a_star(target_enemy.rect, self.speed)
 
+                '''
                 # perform dodge bullet instruction
                 shoot, direction = self.dodge_bullets(self.speed, astar_direction, inline_direction)
                 print("this is 1, and shoot is {0}, dir is {1}, a_star is {2}".format(shoot, direction, astar_direction))
-                # update strategy
-                self.update_strategy(shoot, direction)
-                time.sleep(0.005)
+                '''
+
+                if inline_direction >= 0:
+                    # update strategy
+                    self.update_strategy(1, inline_direction)
+                else:
+                    self.update_strategy(0, astar_direction)
+
+                time.sleep(0.002)
             # go back to start position
             else:
                 # perform a star
@@ -154,21 +161,17 @@ class Robot(tanks.Player):
         if enemy.rect.left <= self.rect.centerx <= enemy.rect.right and abs(self.rect.top - enemy.rect.bottom) <= 151:
             # enemy on top
             if enemy.rect.bottom <= self.rect.top:
-                print('enemy on top')
                 return self.DIR_UP
             # enemy on bottom
             elif self.rect.bottom <= enemy.rect.top:
-                print('enemy on bottom')
                 return self.DIR_DOWN
-        # horizontal inline
+        # horizontal
         if enemy.rect.top <= self.rect.centery <= enemy.rect.bottom and abs(self.rect.left - enemy.rect.right) <= 151:
             # enemy on left
             if enemy.rect.right <= self.rect.left:
-                print('enemy on left')
                 return self.DIR_LEFT
             # enemy on right
             elif self.rect.right <= enemy.rect.left:
-                print('enemy on right')
                 return self.DIR_RIGHT
         return -1
 
